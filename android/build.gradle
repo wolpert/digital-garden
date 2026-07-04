@@ -47,17 +47,20 @@ dependencies {
     natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
 }
 
-// Unpacks the native .so files from the gdx-platform jars into jniLibs.
+// Unpacks the native .so files from the gdx-platform jars into jniLibs, one
+// folder per Android ABI (the folder name must be a valid ABI or AGP rejects it).
 tasks.register('copyAndroidNatives') {
     doFirst {
-        configurations.natives.files.each { jar ->
-            def abi = jar.name.tokenize('-').last().replaceAll(/\.jar$/, '')
-            def outDir = file("libs/$abi")
-            outDir.mkdirs()
-            copy {
-                from zipTree(jar)
-                into outDir
-                include '*.so'
+        ['armeabi-v7a', 'arm64-v8a', 'x86_64', 'x86'].each { abi ->
+            def jar = configurations.natives.files.find { it.name.endsWith("natives-${abi}.jar") }
+            if (jar != null) {
+                def outDir = file("libs/$abi")
+                outDir.mkdirs()
+                copy {
+                    from zipTree(jar)
+                    into outDir
+                    include '*.so'
+                }
             }
         }
     }

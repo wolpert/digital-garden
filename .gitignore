@@ -17,6 +17,8 @@ out/
 local.properties
 *.apk
 *.keystore
+# native .so files unpacked from gdx-platform jars at build time
+android/libs/
 
 # OS
 .DS_Store

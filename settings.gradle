@@ -11,9 +11,5 @@ rootProject.name = 'terrarium'
 include 'core'
 include 'lwjgl3'
 
-// The Android module is scaffolded under android/ but disabled until you install the
-// Android SDK. To enable it:
-//   1. Install the Android SDK and set ANDROID_HOME (or create android/local.properties
-//      containing:  sdk.dir=/path/to/Android/Sdk )
-//   2. Uncomment the line below.
-// include 'android'
+// Android module. Requires the Android SDK; the path is set in android/local.properties.
+include 'android'
