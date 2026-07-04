@@ -72,4 +72,21 @@ public final class Config {
     public static final float CLOUD_BODY_ALPHA = 0.40f;
     /** Rain streak fall speed (pixels/second) and diagonal slant. */
     public static final float RAIN_FALL = 55f;
+
+    // --- Plants & growth ---
+    /** Water depth that drowns/rots a growing plant. */
+    public static final float FLOOD_KILL = 0.14f;
+    /** Growth lost per second while a plant is too dry to advance. */
+    public static final float DRY_DECAY = 0.06f;
+    /** A plant dies once its growth decays below this. */
+    public static final float DEATH_MARGIN = -0.35f;
+    /** Chance per second a mature tree/flower seeds a suitable neighbor. */
+    public static final float SPREAD_CHANCE = 0.03f;
+
+    // --- Moisture-driven terrain transitions (chance per second) ---
+    public static final float WET_MOISTURE = 0.60f;   // above this, dirt greens
+    public static final float DRY_MOISTURE = 0.16f;   // below this, grass browns
+    public static final float DIRT_TO_GRASS = 0.05f;
+    public static final float GRASS_TO_DIRT = 0.03f;
+    public static final float DIRT_TO_SAND = 0.02f;
 }

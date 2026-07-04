@@ -5,6 +5,7 @@ import com.badlogic.gdx.graphics.Pixmap;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.utils.Disposable;
 import com.digitalgarden.terrarium.Config;
+import com.digitalgarden.terrarium.Plant;
 import com.digitalgarden.terrarium.Tile;
 import com.digitalgarden.terrarium.TerrainType;
 import com.digitalgarden.terrarium.World;
@@ -95,6 +96,35 @@ public class PixelRenderer implements Disposable {
                 || (ly == 0 && edge(world, t, tx, ty - 1))
                 || (ly == TS - 1 && edge(world, t, tx, ty + 1))) {
             r *= 0.85f; g *= 0.85f; b *= 0.85f;
+        }
+
+        // --- plants ---
+        if (t.plantType != 0 && !t.rock && t.water <= Config.WATER_RENDER_THRESHOLD) {
+            float grow = t.growth;
+            int ring = Math.max(Math.abs(lx - TS / 2), Math.abs(ly - TS / 2));
+            Plant p = Plant.byId(t.plantType);
+            float pr = 0f, pg = 0f, pb = 0f;
+            boolean lit = false;
+            if (p == Plant.TREE) {
+                if (ring == 0) { lit = true; pr = 0.14f; pg = 0.44f; pb = 0.22f; }
+                else if (ring <= 1 && grow > 0.45f) { lit = true; pr = 0.11f; pg = 0.37f; pb = 0.19f; }
+            } else if (p == Plant.GRASS) {
+                if (ring == 0) { lit = true; pr = 0.45f; pg = 0.80f; pb = 0.32f; }
+                else if (ring <= 1 && grow > 0.55f) { lit = true; pr = 0.42f; pg = 0.74f; pb = 0.30f; }
+            } else if (p == Plant.FLOWER) {
+                if (ring == 0 && grow > 0.35f) {
+                    lit = true;
+                    switch ((int) (hash01(tx * 5 + 3, ty * 5 + 9) * 4f) & 3) {
+                        case 0: pr = 0.95f; pg = 0.30f; pb = 0.35f; break; // red
+                        case 1: pr = 0.98f; pg = 0.85f; pb = 0.30f; break; // yellow
+                        case 2: pr = 0.78f; pg = 0.45f; pb = 0.92f; break; // purple
+                        default: pr = 0.98f; pg = 0.98f; pb = 0.98f;       // white
+                    }
+                } else if (lx == TS / 2 || ly == TS / 2) {
+                    lit = true; pr = 0.40f; pg = 0.70f; pb = 0.30f;        // foliage
+                }
+            }
+            if (lit) { r = pr; g = pg; b = pb; }
         }
 
         // --- weather overlay ---
