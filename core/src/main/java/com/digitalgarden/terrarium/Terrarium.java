@@ -54,9 +54,11 @@ public class Terrarium extends ApplicationAdapter {
         batch.setProjectionMatrix(viewport.getCamera().combined);
         batch.begin();
         Texture tex = renderer.getTexture();
-        // flipY so pixmap row 0 (top) draws at the top of the screen
+        // No flip: pixmap row 0 draws at the top of the screen. This matches the
+        // InputController's screen->tile mapping (so a top click pours at the top)
+        // and makes rain streaks fall downward (they scroll along pixmap +py).
         batch.draw(tex, 0f, 0f, Config.VIEW_W, Config.VIEW_H,
-                0, 0, tex.getWidth(), tex.getHeight(), false, true);
+                0, 0, tex.getWidth(), tex.getHeight(), false, false);
         batch.end();
     }
 
