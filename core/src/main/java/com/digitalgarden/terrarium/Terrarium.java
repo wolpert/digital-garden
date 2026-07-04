@@ -2,15 +2,18 @@ package com.digitalgarden.terrarium;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
 import com.badlogic.gdx.graphics.glutils.ShapeRenderer;
 import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
+import com.digitalgarden.terrarium.input.CameraController;
 import com.digitalgarden.terrarium.input.Hud;
 import com.digitalgarden.terrarium.input.InputController;
 import com.digitalgarden.terrarium.render.PixelRenderer;
+import com.digitalgarden.terrarium.render.WorldCamera;
 import com.digitalgarden.terrarium.sim.FluidSystem;
 import com.digitalgarden.terrarium.sim.GrowthSystem;
 import com.digitalgarden.terrarium.sim.WeatherSystem;
@@ -18,21 +21,25 @@ import com.digitalgarden.terrarium.sim.WeatherSystem;
 /**
  * Terrarium — a top-down, real-time landscape sandbox.
  *
- * <p>A procedurally generated, pixel-textured world rendered to a fixed 480x270
- * logical canvas. Each fixed tick runs weather (clouds + rain), the fluid water
- * sim, then plant growth and moisture-driven terrain transitions. The player
- * nudges it through the tool palette: pour water, sow seeds, and move rocks.
+ * <p>A procedurally generated, pixel-textured world larger than the screen; the
+ * camera scrolls a 480x270 window over it. Each fixed tick runs weather (clouds +
+ * rain), the fluid water sim, then plant growth and moisture-driven terrain
+ * transitions. The player nudges it through the tool palette: pour water, sow
+ * seeds, and move rocks; pan with WASD/arrows, right-drag, or two fingers.
  * See PROMPT.md.
  */
 public class Terrarium extends ApplicationAdapter {
     private SpriteBatch batch;
     private ShapeRenderer shapes;
     private Viewport viewport;
+    private OrthographicCamera uiCam;
     private PixelRenderer renderer;
     private World world;
     private FluidSystem fluid;
     private WeatherSystem weather;
     private GrowthSystem growth;
+    private WorldCamera camera;
+    private CameraController cameraController;
     private Hud hud;
     private InputController input;
     private float time;
@@ -43,12 +50,16 @@ public class Terrarium extends ApplicationAdapter {
         batch = new SpriteBatch();
         shapes = new ShapeRenderer();
         viewport = new FitViewport(Config.VIEW_W, Config.VIEW_H);
+        uiCam = new OrthographicCamera();
+        uiCam.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         world = new World(Config.SEED);
         fluid = new FluidSystem(world);
         weather = new WeatherSystem(world, Config.SEED * 13 + 5);
         growth = new GrowthSystem(Config.SEED * 7 + 1);
+        camera = new WorldCamera();
+        cameraController = new CameraController(viewport, camera);
         hud = new Hud(viewport);
-        input = new InputController(world, viewport, hud);
+        input = new InputController(world, viewport, hud, camera);
         renderer = new PixelRenderer();
     }
 
@@ -57,7 +68,7 @@ public class Terrarium extends ApplicationAdapter {
         float dt = Gdx.graphics.getDeltaTime();
         time += dt;
         update(dt);
-        renderer.render(world, weather, time);
+        renderer.render(world, weather, time, camera.pxX(), camera.pxY());
 
         ScreenUtils.clear(0.05f, 0.06f, 0.09f, 1f);
         viewport.apply();
@@ -71,11 +82,12 @@ public class Terrarium extends ApplicationAdapter {
                 0, 0, tex.getWidth(), tex.getHeight(), false, false);
         batch.end();
 
-        hud.render(shapes, input.isCarrying());
+        hud.render(shapes, batch, uiCam, camera, input.isCarrying());
     }
 
-    /** Pours (continuous) then advances the fluid on a fixed timestep. */
+    /** Handles input and camera, then advances the sim on a fixed timestep. */
     private void update(float dt) {
+        cameraController.update(dt);
         input.update(dt);
         simAccumulator += dt;
         // cap iterations so a hitch can't spiral into a catch-up death loop
@@ -92,6 +104,7 @@ public class Terrarium extends ApplicationAdapter {
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
+        uiCam.setToOrtho(false, width, height);
     }
 
     @Override
@@ -99,5 +112,6 @@ public class Terrarium extends ApplicationAdapter {
         batch.dispose();
         shapes.dispose();
         renderer.dispose();
+        hud.dispose();
     }
 }

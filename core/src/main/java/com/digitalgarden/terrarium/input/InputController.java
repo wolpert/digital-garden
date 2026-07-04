@@ -1,6 +1,7 @@
 package com.digitalgarden.terrarium.input;
 
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.math.Vector3;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.digitalgarden.terrarium.Config;
@@ -9,6 +10,7 @@ import com.digitalgarden.terrarium.TerrainType;
 import com.digitalgarden.terrarium.Tile;
 import com.digitalgarden.terrarium.Tool;
 import com.digitalgarden.terrarium.World;
+import com.digitalgarden.terrarium.render.WorldCamera;
 
 /**
  * Turns pointer input into tool actions, dispatching on the {@link Hud}'s
@@ -20,6 +22,7 @@ public class InputController {
     private final World world;
     private final Viewport viewport;
     private final Hud hud;
+    private final WorldCamera camera;
     private final Vector3 tmp = new Vector3();
 
     private boolean wasTouched;
@@ -27,10 +30,11 @@ public class InputController {
     private boolean carrying;     // holding a picked-up rock
     private int carryFromX, carryFromY;
 
-    public InputController(World world, Viewport viewport, Hud hud) {
+    public InputController(World world, Viewport viewport, Hud hud, WorldCamera camera) {
         this.world = world;
         this.viewport = viewport;
         this.hud = hud;
+        this.camera = camera;
     }
 
     public boolean isCarrying() {
@@ -38,16 +42,21 @@ public class InputController {
     }
 
     public void update(float dt) {
-        boolean touched = Gdx.input.isTouched();
+        // A right-drag (desktop) or a second finger (touch) means the user is
+        // panning the camera, not using a tool — ignore the primary pointer then.
+        boolean panning = Gdx.input.isButtonPressed(Input.Buttons.RIGHT) || Gdx.input.isTouched(1);
+        boolean touched = Gdx.input.isTouched() && !panning;
         boolean justDown = touched && !wasTouched;
         boolean justUp = !touched && wasTouched;
 
         tmp.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
         viewport.unproject(tmp);
         float lx = tmp.x, ly = tmp.y;
-        int cx = (int) Math.floor(lx / Config.TILE_SIZE);
-        // screen-top maps to tile row 0 (renderer draws row 0 at the top)
-        int cy = (int) Math.floor((Config.VIEW_H - ly) / Config.TILE_SIZE);
+        // view pixel (top-origin) -> world pixel via the camera -> world tile
+        int wx = camera.pxX() + (int) Math.floor(lx);
+        int wy = camera.pxY() + (int) Math.floor(Config.VIEW_H - ly);
+        int cx = wx / Config.TILE_SIZE;
+        int cy = wy / Config.TILE_SIZE;
 
         if (justDown) {
             int btn = hud.buttonAt(lx, ly);

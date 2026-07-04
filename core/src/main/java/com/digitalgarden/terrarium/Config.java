@@ -10,11 +10,20 @@ public final class Config {
     // --- Board geometry ---
     /** Logical pixels per tile. Small tiles = fine, chunky pixel look. */
     public static final int TILE_SIZE = 3;
-    public static final int GRID_W = 160;
-    public static final int GRID_H = 90;
-    /** Logical render resolution (480x270). Scaled up to the window via a FitViewport. */
-    public static final int VIEW_W = GRID_W * TILE_SIZE;
-    public static final int VIEW_H = GRID_H * TILE_SIZE;
+
+    /** The whole world, in tiles. Larger than the view: the camera scrolls over it. */
+    public static final int WORLD_W = 480;
+    public static final int WORLD_H = 270;
+    /** The world's extent in logical pixels. */
+    public static final int WORLD_PX_W = WORLD_W * TILE_SIZE;
+    public static final int WORLD_PX_H = WORLD_H * TILE_SIZE;
+
+    /** On-screen render resolution (480x270). Scaled up to the window via a FitViewport. */
+    public static final int VIEW_W = 480;
+    public static final int VIEW_H = 270;
+
+    /** Camera pan speed in logical pixels/second (keyboard). */
+    public static final float PAN_SPEED = 260f;
 
     // --- Simulation ---
     /** Seconds per fixed simulation tick (~18 ticks/second). */

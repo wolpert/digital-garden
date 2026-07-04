@@ -8,8 +8,8 @@ import com.digitalgarden.terrarium.util.Noise;
  * wetter ground grows grass and trees.
  */
 public class World {
-    public final int w = Config.GRID_W;
-    public final int h = Config.GRID_H;
+    public final int w = Config.WORLD_W;
+    public final int h = Config.WORLD_H;
     public final Tile[] tiles = new Tile[w * h];
 
     public World(long seed) {

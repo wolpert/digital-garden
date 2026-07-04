@@ -35,23 +35,29 @@ public class PixelRenderer implements Disposable {
         return texture;
     }
 
-    /** Repaints the whole board. {@code time} (seconds) animates water and rain. */
-    public void render(World world, WeatherSystem weather, float time) {
+    /**
+     * Repaints the visible window into the world. {@code camX,camY} is the world-
+     * pixel coordinate of the view's top-left corner; {@code time} animates water
+     * and rain.
+     */
+    public void render(World world, WeatherSystem weather, float time, int camX, int camY) {
         float invTs = 1f / TS;
         for (int py = 0; py < H; py++) {
-            int ty = py / TS;
-            float fy = py * invTs;
+            int wy = camY + py;
+            int ty = wy / TS;
+            float fy = wy * invTs;
             for (int px = 0; px < W; px++) {
-                int tx = px / TS;
-                float fx = px * invTs;
-                pixmap.drawPixel(px, py, pixelColor(world, weather, tx, ty, px, py, fx, fy, time));
+                int wx = camX + px;
+                int tx = wx / TS;
+                float fx = wx * invTs;
+                pixmap.drawPixel(px, py, pixelColor(world, weather, tx, ty, wx, wy, px, py, fx, fy, time));
             }
         }
         texture.draw(pixmap, 0, 0);
     }
 
     private int pixelColor(World world, WeatherSystem weather, int tx, int ty,
-                           int px, int py, float fx, float fy, float time) {
+                           int wx, int wy, int px, int py, float fx, float fy, float time) {
         Tile t = world.at(tx, ty);
         float r, g, b;
 
@@ -62,16 +68,17 @@ public class PixelRenderer implements Disposable {
             r = lerp(0.42f, deep.r, depth);
             g = lerp(0.66f, deep.g, depth);
             b = lerp(0.85f, deep.b, depth);
-            // animated caustic shimmer, stronger in shallows
-            float shimmer = (float) Math.sin(px * 0.6f + py * 0.35f + time * 2.0f)
-                          * (float) Math.sin(px * 0.2f - py * 0.5f - time * 1.3f);
+            // animated caustic shimmer, stronger in shallows (world-anchored so it
+            // doesn't swim across the water when the camera pans)
+            float shimmer = (float) Math.sin(wx * 0.6f + wy * 0.35f + time * 2.0f)
+                          * (float) Math.sin(wx * 0.2f - wy * 0.5f - time * 1.3f);
             float caustic = 0.06f * shimmer * (0.4f + 0.6f * (1f - depth));
             r += caustic;
             g += caustic;
             b += caustic * 1.2f;
         } else if (t.rock) {
             r = 0.50f; g = 0.50f; b = 0.53f;
-            float d = (hash01(px * 3 + 1, py * 3 + 5) - 0.5f) * 0.10f;
+            float d = (hash01(wx * 3 + 1, wy * 3 + 5) - 0.5f) * 0.10f;
             r += d; g += d; b += d;
         } else {
             Color base = t.terrain.color;
@@ -79,8 +86,8 @@ public class PixelRenderer implements Disposable {
             // stable per-tile value variation (seeded by tile coords, so it never flickers)
             float tv = (hash01(tx + 7, ty + 13) - 0.5f) * 0.10f;
             r += tv; g += tv; b += tv;
-            // per-pixel dither for texture
-            float d = (hash01(px * 3 + 1, py * 3 + 5) - 0.5f) * 0.06f;
+            // per-pixel dither for texture (world-anchored)
+            float d = (hash01(wx * 3 + 1, wy * 3 + 5) - 0.5f) * 0.06f;
             r += d; g += d; b += d;
             // wet soil reads darker
             if (t.terrain == TerrainType.DIRT || t.terrain == TerrainType.SAND) {
@@ -90,7 +97,7 @@ public class PixelRenderer implements Disposable {
         }
 
         // subtle darkening on pixels sitting against a different surface
-        int lx = px % TS, ly = py % TS;
+        int lx = wx % TS, ly = wy % TS;
         if ((lx == 0 && edge(world, t, tx - 1, ty))
                 || (lx == TS - 1 && edge(world, t, tx + 1, ty))
                 || (ly == 0 && edge(world, t, tx, ty - 1))
