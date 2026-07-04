@@ -28,4 +28,25 @@ public final class Config {
     public static final float WATER_RENDER_THRESHOLD = 0.03f;
     /** Depth that maps to the deepest water shade. */
     public static final float WATER_DEEP = 0.5f;
+
+    // --- Fluid simulation ---
+    /** Fraction of the equalizing flow applied per tick (< 1 keeps it from oscillating). */
+    public static final float FLOW_DAMP = 0.5f;
+    /** Water depth below which a tile is snapped to bone-dry. */
+    public static final float FLUID_MIN = 0.0015f;
+    /** Base water lost to evaporation per tick (scaled by terrain). Kept low so
+     *  pooled water lingers for minutes; rain (a later milestone) replenishes it. */
+    public static final float EVAP_BASE = 0.00006f;
+    public static final float EVAP_SAND = 1.3f;   // bakes off fast
+    public static final float EVAP_TREES = 0.4f;  // shaded, retains
+    /** How damp land next to standing water becomes, and how fast it gets there. */
+    public static final float SHORE_MOISTURE = 0.7f;
+    public static final float MOISTURE_WET_RATE = 0.02f;
+    public static final float MOISTURE_DRY_RATE = 0.002f;
+
+    // --- Pour tool ---
+    /** Water volume added per second at the center of the brush. */
+    public static final float POUR_RATE = 2.5f;
+    /** Brush radius in tiles. */
+    public static final int POUR_RADIUS = 4;
 }
