@@ -8,6 +8,7 @@ import com.digitalgarden.terrarium.Config;
 import com.digitalgarden.terrarium.Tile;
 import com.digitalgarden.terrarium.TerrainType;
 import com.digitalgarden.terrarium.World;
+import com.digitalgarden.terrarium.sim.WeatherSystem;
 
 /**
  * Draws the world at the pixel level into an offscreen {@link Pixmap} and uploads
@@ -33,19 +34,23 @@ public class PixelRenderer implements Disposable {
         return texture;
     }
 
-    /** Repaints the whole board. {@code time} (seconds) animates the water shimmer. */
-    public void render(World world, float time) {
+    /** Repaints the whole board. {@code time} (seconds) animates water and rain. */
+    public void render(World world, WeatherSystem weather, float time) {
+        float invTs = 1f / TS;
         for (int py = 0; py < H; py++) {
             int ty = py / TS;
+            float fy = py * invTs;
             for (int px = 0; px < W; px++) {
                 int tx = px / TS;
-                pixmap.drawPixel(px, py, pixelColor(world, tx, ty, px, py, time));
+                float fx = px * invTs;
+                pixmap.drawPixel(px, py, pixelColor(world, weather, tx, ty, px, py, fx, fy, time));
             }
         }
         texture.draw(pixmap, 0, 0);
     }
 
-    private int pixelColor(World world, int tx, int ty, int px, int py, float time) {
+    private int pixelColor(World world, WeatherSystem weather, int tx, int ty,
+                           int px, int py, float fx, float fy, float time) {
         Tile t = world.at(tx, ty);
         float r, g, b;
 
@@ -90,6 +95,41 @@ public class PixelRenderer implements Disposable {
                 || (ly == 0 && edge(world, t, tx, ty - 1))
                 || (ly == TS - 1 && edge(world, t, tx, ty + 1))) {
             r *= 0.85f; g *= 0.85f; b *= 0.85f;
+        }
+
+        // --- weather overlay ---
+        // overcast: a subtle global dimming while it storms
+        float ambient = 1f - weather.stormLevel() * 0.12f;
+        r *= ambient; g *= ambient; b *= ambient;
+
+        // soft cloud shadow trailing the cloud (offset by sun angle)
+        float shadow = weather.shadowAt(fx, fy) * Config.SHADOW_STRENGTH;
+        if (shadow > 0f) {
+            float sf = 1f - shadow;
+            r *= sf; g *= sf; b *= sf;
+        }
+
+        // translucent white cloud body — only the denser cores read as cloud
+        float body = weather.cloudAt(fx, fy);
+        body *= body; // emphasize cores, fade thin edges
+        float ba = body * Config.CLOUD_BODY_ALPHA;
+        if (ba > 0f) {
+            r = r * (1f - ba) + 0.93f * ba;
+            g = g * (1f - ba) + 0.95f * ba;
+            b = b * (1f - ba) + 1.00f * ba;
+        }
+
+        // animated rain streaks under raining cloud
+        float rain = weather.rainAt(fx, fy);
+        if (rain > 0.04f) {
+            int ry = py - (int) (time * Config.RAIN_FALL); // scrolls downward over time
+            int rx = px + (py >> 2);                        // fixed diagonal slant
+            if (hash01(rx * 7, Math.floorDiv(ry, 3)) > 1f - 0.06f * rain
+                    && Math.floorMod(ry, 3) < 2) {
+                r = lerp(r, 0.82f, 0.55f);
+                g = lerp(g, 0.90f, 0.55f);
+                b = lerp(b, 1.00f, 0.55f);
+            }
         }
 
         return pack(r, g, b);

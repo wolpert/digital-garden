@@ -49,4 +49,27 @@ public final class Config {
     public static final float POUR_RATE = 2.5f;
     /** Brush radius in tiles. */
     public static final int POUR_RADIUS = 4;
+
+    // --- Weather ---
+    /** Cloud drift speed (cloud-noise units/second); wind direction wanders on its own. */
+    public static final float WIND_SPEED = 0.12f;
+    /** Spatial frequency of the cloud field (smaller = larger, softer clouds). */
+    public static final float CLOUD_SCALE = 0.05f;
+    /** Cloud-density remap window: below LOW is clear sky, above HIGH is solid cloud. */
+    public static final float CLOUD_LOW = 0.42f;
+    public static final float CLOUD_HIGH = 0.72f;
+    /** Cloud density above which it rains (scaled by the current storm level). */
+    public static final float RAIN_THRESHOLD = 0.55f;
+    /** Water volume rained per second at full intensity. Balanced against evaporation. */
+    public static final float RAIN_RATE = 0.02f;
+    /** How strongly rain raises soil moisture per second. */
+    public static final float RAIN_MOISTURE = 2.0f;
+    /** Cloud shadow offset (tiles) and darkening strength. */
+    public static final float CLOUD_SHADOW_DX = 2.5f;
+    public static final float CLOUD_SHADOW_DY = 2.5f;
+    public static final float SHADOW_STRENGTH = 0.30f;
+    /** Opacity of the translucent white cloud bodies. */
+    public static final float CLOUD_BODY_ALPHA = 0.40f;
+    /** Rain streak fall speed (pixels/second) and diagonal slant. */
+    public static final float RAIN_FALL = 55f;
 }
