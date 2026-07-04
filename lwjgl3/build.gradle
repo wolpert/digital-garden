@@ -1,0 +1,22 @@
+apply plugin: 'application'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
+}
+
+application {
+    mainClass = 'com.digitalgarden.terrarium.lwjgl3.Lwjgl3Launcher'
+}
+
+// Let `./gradlew lwjgl3:run` work from the project root regardless of CWD.
+run {
+    workingDir = rootProject.projectDir
+    setIgnoreExitValue(true)
+}
+
+dependencies {
+    implementation project(':core')
+    implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
+}

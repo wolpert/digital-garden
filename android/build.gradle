@@ -1,0 +1,68 @@
+// Android module — DISABLED by default (not included in settings.gradle).
+// Requires the Android SDK. See android/README.md to enable.
+plugins {
+    id 'com.android.application' version '8.7.2'
+}
+
+android {
+    namespace 'com.digitalgarden.terrarium'
+    compileSdk 34
+
+    sourceSets {
+        main {
+            manifest.srcFile 'AndroidManifest.xml'
+            java.srcDirs = ['src/main/java']
+            assets.srcDirs = ['../assets']
+            jniLibs.srcDirs = ['libs']
+        }
+    }
+
+    defaultConfig {
+        applicationId 'com.digitalgarden.terrarium'
+        minSdk 21
+        targetSdk 34
+        versionCode 1
+        versionName '0.1.0'
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    packaging {
+        resources.excludes += ['META-INF/robovm/ios/robovm.xml']
+    }
+}
+
+configurations { natives }
+
+dependencies {
+    implementation project(':core')
+    implementation "com.badlogicgames.gdx:gdx-backend-android:$gdxVersion"
+    implementation "com.badlogicgames.gdx:gdx:$gdxVersion"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-armeabi-v7a"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-arm64-v8a"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86"
+    natives "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-x86_64"
+}
+
+// Unpacks the native .so files from the gdx-platform jars into jniLibs.
+tasks.register('copyAndroidNatives') {
+    doFirst {
+        configurations.natives.files.each { jar ->
+            def abi = jar.name.tokenize('-').last().replaceAll(/\.jar$/, '')
+            def outDir = file("libs/$abi")
+            outDir.mkdirs()
+            copy {
+                from zipTree(jar)
+                into outDir
+                include '*.so'
+            }
+        }
+    }
+}
+
+tasks.matching { it.name.contains('merge') && it.name.contains('JniLibFolders') }.configureEach {
+    it.dependsOn 'copyAndroidNatives'
+}

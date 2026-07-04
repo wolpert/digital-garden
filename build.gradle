@@ -1,0 +1,15 @@
+allprojects {
+    version = '0.1.0'
+
+    ext {
+        appName = 'Terrarium'
+        gdxVersion = '1.13.1'
+    }
+
+    repositories {
+        mavenCentral()
+        google()
+        gradlePluginPortal()
+        maven { url = uri('https://s01.oss.sonatype.org/content/repositories/snapshots/') }
+    }
+}
