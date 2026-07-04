@@ -52,9 +52,9 @@ public class InputController {
         tmp.set(Gdx.input.getX(), Gdx.input.getY(), 0f);
         viewport.unproject(tmp);
         float lx = tmp.x, ly = tmp.y;
-        // view pixel (top-origin) -> world pixel via the camera -> world tile
-        int wx = camera.pxX() + (int) Math.floor(lx);
-        int wy = camera.pxY() + (int) Math.floor(Config.VIEW_H - ly);
+        // view pixel (top-origin) -> world pixel via the camera (scroll + zoom) -> tile
+        int wx = (int) camera.viewToWorldX(lx);
+        int wy = (int) camera.viewToWorldY(Config.VIEW_H - ly);
         int cx = wx / Config.TILE_SIZE;
         int cy = wy / Config.TILE_SIZE;
 

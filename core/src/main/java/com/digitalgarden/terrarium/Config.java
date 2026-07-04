@@ -22,8 +22,16 @@ public final class Config {
     public static final int VIEW_W = 480;
     public static final int VIEW_H = 270;
 
-    /** Camera pan speed in logical pixels/second (keyboard). */
+    /** Camera pan speed in on-screen pixels/second (keyboard), constant across zoom. */
     public static final float PAN_SPEED = 260f;
+
+    // --- Zoom (view pixels per world pixel) ---
+    /** Zoomed all the way out fits the whole world (world and view share 16:9). */
+    public static final float MIN_ZOOM = VIEW_W / (float) WORLD_PX_W;
+    public static final float MAX_ZOOM = 6f;
+    public static final float DEFAULT_ZOOM = 1f;
+    /** Multiplicative zoom change per mouse-wheel notch. */
+    public static final float ZOOM_STEP = 1.15f;
 
     // --- Simulation ---
     /** Seconds per fixed simulation tick (~18 ticks/second). */

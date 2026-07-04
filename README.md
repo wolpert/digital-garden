@@ -1,0 +1,98 @@
+# Terrarium
+
+A relaxing, top-down **landscape growing sandbox** built with [libGDX](https://libgdx.com/).
+There's no score and no fail state — you tend a living, procedurally generated
+world: pour water and watch it flow into ponds, plant seeds and watch them grow
+(or wither), drag rocks around to dam the flow, while clouds drift over and rain
+comes and goes on its own.
+
+The world is rendered at the pixel level — colors *are* the landscape:
+
+| Color | Terrain |
+|-------|---------|
+| Light green | Grass |
+| Dark green | Trees |
+| Blue | Water |
+| Brown | Dirt |
+| Yellow | Sand |
+
+## Controls
+
+**Tools** — pick one from the palette in the bottom-left (hover a button for its name):
+
+| Tool | Action |
+|------|--------|
+| **Water** | Hold / drag to pour water into a soft radius; it then flows downhill and pools. |
+| **Grass / Tree / Flower seed** | Click or drag to sow seeds on land. |
+| **Move rock** | Press on a rock to pick it up, release to drop it (rocks dam and divert water). |
+
+**Camera**
+
+| Input | Desktop | Touch |
+|-------|---------|-------|
+| **Pan** | WASD / arrow keys, or right-mouse drag | Drag with two fingers |
+| **Zoom** | Mouse wheel (toward the cursor) | Pinch |
+
+## Running it
+
+Requires a JDK (17+). The bundled Gradle wrapper handles everything else.
+
+**Desktop:**
+
+```bash
+./gradlew :lwjgl3:run
+```
+
+**Android** (needs the Android SDK). Point Gradle at it via a `local.properties`
+file in the project root containing `sdk.dir=/path/to/Android/Sdk`, or by setting
+`ANDROID_HOME`. Then:
+
+```bash
+./gradlew :android:assembleDebug   # build a debug APK
+./gradlew :android:installDebug    # install to a connected device/emulator
+```
+
+See [`android/README.md`](android/README.md) for details.
+
+## How it works
+
+The world is a grid of tiles (480×270), larger than the screen; the camera
+scrolls and zooms a 480×270 window over it. Each fixed simulation tick (~18/sec,
+decoupled from the render framerate) runs three systems in order:
+
+1. **Weather** — a drifting noise-based cloud field carried by a wandering wind.
+   Dense clouds rain, adding water and moisture; storms ebb through clear spells.
+2. **Fluid** — a shallow-water cellular automaton. Water flows only downhill
+   (by terrain elevation + depth), conserving volume, so it pools in low ground
+   and settles flat. Rocks are impermeable walls. Water slowly evaporates.
+3. **Growth** — seeds germinate and grow when moisture is right, stall and die
+   when too dry, and rot when flooded. Grass and trees mature into their terrain;
+   flowers bloom. Moisture also nudges terrain itself: wet dirt greens into grass,
+   dry grass browns to dirt, dry shoreline dirt turns to sand.
+
+The **renderer** paints the visible window per-pixel into an offscreen buffer,
+adding per-tile hue variation, dithering, terrain-edge shading, animated water
+shimmer, cloud shadows and rain streaks.
+
+### Project layout
+
+```
+core/     All game logic, shared by every platform:
+  Config.java            every tuning constant in one place
+  World / Tile / Plant   the grid model and world generation
+  sim/                   FluidSystem, WeatherSystem, GrowthSystem
+  render/                PixelRenderer, WorldCamera
+  input/                 InputController (tools), CameraController, Hud
+  Terrarium.java         the ApplicationAdapter wiring it together
+lwjgl3/   Desktop launcher (LWJGL3)
+android/  Android launcher
+```
+
+Want to change the feel of the world? Almost everything — grid size, tick rate,
+sea level, evaporation, growth rates, rain intensity, zoom limits — lives in
+[`Config.java`](core/src/main/java/com/digitalgarden/terrarium/Config.java).
+
+## Tech
+
+Java 17 · libGDX 1.13.1 · Gradle (wrapper, 8.10.2). No external art assets — the
+landscape and UI are drawn procedurally.

@@ -36,18 +36,20 @@ public class PixelRenderer implements Disposable {
     }
 
     /**
-     * Repaints the visible window into the world. {@code camX,camY} is the world-
-     * pixel coordinate of the view's top-left corner; {@code time} animates water
-     * and rain.
+     * Repaints the visible window into the world through the {@link WorldCamera}
+     * (scroll + zoom). {@code time} animates water and rain. At zoom &gt; 1 several
+     * view pixels map to the same world pixel (crisp nearest-neighbor magnification).
      */
-    public void render(World world, WeatherSystem weather, float time, int camX, int camY) {
+    public void render(World world, WeatherSystem weather, float time, WorldCamera cam) {
+        float ox = cam.x(), oy = cam.y();
+        float invZoom = 1f / cam.zoom();
         float invTs = 1f / TS;
         for (int py = 0; py < H; py++) {
-            int wy = camY + py;
+            int wy = (int) (oy + py * invZoom);
             int ty = wy / TS;
             float fy = wy * invTs;
             for (int px = 0; px < W; px++) {
-                int wx = camX + px;
+                int wx = (int) (ox + px * invZoom);
                 int tx = wx / TS;
                 float fx = wx * invTs;
                 pixmap.drawPixel(px, py, pixelColor(world, weather, tx, ty, wx, wy, px, py, fx, fy, time));

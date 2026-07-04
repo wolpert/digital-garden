@@ -68,7 +68,7 @@ public class Terrarium extends ApplicationAdapter {
         float dt = Gdx.graphics.getDeltaTime();
         time += dt;
         update(dt);
-        renderer.render(world, weather, time, camera.pxX(), camera.pxY());
+        renderer.render(world, weather, time, camera);
 
         ScreenUtils.clear(0.05f, 0.06f, 0.09f, 1f);
         viewport.apply();

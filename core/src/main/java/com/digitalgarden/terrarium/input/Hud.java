@@ -82,12 +82,10 @@ public class Hud implements Disposable {
                 sr.rect(x + SIZE / 2f - 1.5f, y + SIZE / 2f - 1.5f, 3f, 3f);
             }
         }
-        if (carrying) { // a rock riding the cursor
+        if (carrying) { // a rock riding the cursor, sized to the zoom
             sr.setColor(0.50f, 0.50f, 0.53f, 0.9f);
-            float gx = (float) Math.floor(lx / Config.TILE_SIZE) * Config.TILE_SIZE;
-            float gy = (float) Math.floor(ly / Config.TILE_SIZE) * Config.TILE_SIZE;
-            sr.rect(gx - Config.TILE_SIZE, gy - Config.TILE_SIZE,
-                    Config.TILE_SIZE * 3f, Config.TILE_SIZE * 3f);
+            float s = Config.TILE_SIZE * cam.zoom() * 1.5f;
+            sr.rect(lx - s, ly - s, s * 2f, s * 2f);
         }
         sr.end();
 
@@ -104,7 +102,7 @@ public class Hud implements Disposable {
         if (overBoard && !overPanel) {
             if (tool == Tool.WATER) {
                 sr.setColor(0.7f, 0.85f, 1f, 0.9f);
-                sr.circle(lx, ly, Config.POUR_RADIUS * Config.TILE_SIZE);
+                sr.circle(lx, ly, Config.POUR_RADIUS * Config.TILE_SIZE * cam.zoom());
             } else {
                 drawTileBrush(sr, cam, lx, ly, tool);
             }
@@ -120,17 +118,18 @@ public class Hud implements Disposable {
         }
     }
 
-    /** Outlines the world tile under the cursor, accounting for the camera scroll. */
+    /** Outlines the world tile under the cursor, accounting for camera scroll and zoom. */
     private void drawTileBrush(ShapeRenderer sr, WorldCamera cam, float lx, float ly, Tool tool) {
         int ts = Config.TILE_SIZE;
-        int wx = cam.pxX() + (int) Math.floor(lx);
-        int wy = cam.pxY() + (int) Math.floor(Config.VIEW_H - ly);
+        int wx = (int) cam.viewToWorldX(lx);
+        int wy = (int) cam.viewToWorldY(Config.VIEW_H - ly);
         int tileX = wx / ts, tileY = wy / ts;
-        float viewX = tileX * ts - cam.pxX();
-        float viewYTop = tileY * ts - cam.pxY();       // top-origin
-        float logicalY = Config.VIEW_H - (viewYTop + ts); // to y-up logical
+        float viewX = cam.worldToViewX(tileX * ts);
+        float viewYTop = cam.worldToViewY(tileY * ts);   // top-origin
+        float sizeV = ts * cam.zoom();
+        float logicalY = Config.VIEW_H - (viewYTop + sizeV); // to y-up logical
         sr.setColor(tool.swatch.r, tool.swatch.g, tool.swatch.b, 1f);
-        sr.rect(viewX, logicalY, ts, ts);
+        sr.rect(viewX, logicalY, sizeV, sizeV);
     }
 
     private void drawTooltip(SpriteBatch batch, Camera uiCam, int button) {
