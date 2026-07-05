@@ -19,6 +19,7 @@ import com.digitalgarden.terrarium.render.WorldCamera;
 import com.digitalgarden.terrarium.sim.FluidSystem;
 import com.digitalgarden.terrarium.sim.GrowthSystem;
 import com.digitalgarden.terrarium.sim.WeatherSystem;
+import com.digitalgarden.terrarium.wildlife.WildlifeSystem;
 
 /**
  * Terrarium — a top-down, real-time landscape sandbox.
@@ -42,6 +43,7 @@ public class Terrarium extends ApplicationAdapter {
     private FluidSystem fluid;
     private WeatherSystem weather;
     private GrowthSystem growth;
+    private WildlifeSystem wildlife;
     private WorldCamera camera;
     private CameraController cameraController;
     private Hud hud;
@@ -62,6 +64,7 @@ public class Terrarium extends ApplicationAdapter {
         fluid = new FluidSystem(world, settings);
         weather = new WeatherSystem(world, Config.SEED * 13 + 5, settings);
         growth = new GrowthSystem(Config.SEED * 7 + 1, settings);
+        wildlife = new WildlifeSystem(world, Config.SEED * 17 + 3);
         camera = new WorldCamera();
         cameraController = new CameraController(viewport, camera);
         hud = new Hud(viewport);
@@ -90,6 +93,8 @@ public class Terrarium extends ApplicationAdapter {
                 0, 0, tex.getWidth(), tex.getHeight(), false, false);
         batch.end();
 
+        wildlife.draw(shapes, viewport.getCamera(), camera, time);
+
         miniMap.render(batch, shapes, viewport.getCamera(), world, camera);
         dials.render(shapes, batch, uiCam);
         hud.render(shapes, batch, uiCam, camera, input.isCarrying());
@@ -109,6 +114,7 @@ public class Terrarium extends ApplicationAdapter {
             simAccumulator -= Config.SIM_TICK;
             steps++;
         }
+        wildlife.update(dt); // continuous entities, smooth per-frame motion
     }
 
     @Override
