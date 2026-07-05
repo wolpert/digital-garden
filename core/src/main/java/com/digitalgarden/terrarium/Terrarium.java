@@ -12,6 +12,7 @@ import com.badlogic.gdx.utils.viewport.Viewport;
 import com.digitalgarden.terrarium.input.CameraController;
 import com.digitalgarden.terrarium.input.Hud;
 import com.digitalgarden.terrarium.input.InputController;
+import com.digitalgarden.terrarium.render.MiniMap;
 import com.digitalgarden.terrarium.render.PixelRenderer;
 import com.digitalgarden.terrarium.render.WorldCamera;
 import com.digitalgarden.terrarium.sim.FluidSystem;
@@ -34,6 +35,7 @@ public class Terrarium extends ApplicationAdapter {
     private Viewport viewport;
     private OrthographicCamera uiCam;
     private PixelRenderer renderer;
+    private MiniMap miniMap;
     private World world;
     private FluidSystem fluid;
     private WeatherSystem weather;
@@ -59,8 +61,9 @@ public class Terrarium extends ApplicationAdapter {
         camera = new WorldCamera();
         cameraController = new CameraController(viewport, camera);
         hud = new Hud(viewport);
-        input = new InputController(world, viewport, hud, camera);
         renderer = new PixelRenderer();
+        miniMap = new MiniMap();
+        input = new InputController(world, viewport, hud, camera, miniMap);
     }
 
     @Override
@@ -82,6 +85,7 @@ public class Terrarium extends ApplicationAdapter {
                 0, 0, tex.getWidth(), tex.getHeight(), false, false);
         batch.end();
 
+        miniMap.render(batch, shapes, viewport.getCamera(), world, camera);
         hud.render(shapes, batch, uiCam, camera, input.isCarrying());
     }
 
@@ -112,6 +116,7 @@ public class Terrarium extends ApplicationAdapter {
         batch.dispose();
         shapes.dispose();
         renderer.dispose();
+        miniMap.dispose();
         hud.dispose();
     }
 }

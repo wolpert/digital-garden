@@ -33,6 +33,9 @@ The world is rendered at the pixel level — colors *are* the landscape:
 | **Pan** | WASD / arrow keys, or right-mouse drag | Drag with two fingers |
 | **Zoom** | Mouse wheel (toward the cursor) | Pinch |
 
+While zoomed in, a **mini-map** in the top-right shows the whole world with a
+rectangle marking your current view.
+
 ## Running it
 
 Requires a JDK (17+). The bundled Gradle wrapper handles everything else.

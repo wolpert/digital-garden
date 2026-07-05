@@ -10,6 +10,7 @@ import com.digitalgarden.terrarium.TerrainType;
 import com.digitalgarden.terrarium.Tile;
 import com.digitalgarden.terrarium.Tool;
 import com.digitalgarden.terrarium.World;
+import com.digitalgarden.terrarium.render.MiniMap;
 import com.digitalgarden.terrarium.render.WorldCamera;
 
 /**
@@ -23,18 +24,20 @@ public class InputController {
     private final Viewport viewport;
     private final Hud hud;
     private final WorldCamera camera;
+    private final MiniMap miniMap;
     private final Vector3 tmp = new Vector3();
 
     private boolean wasTouched;
-    private boolean hudCapture;   // this press began on the palette
+    private boolean hudCapture;   // this press began on the palette or mini-map
     private boolean carrying;     // holding a picked-up rock
     private int carryFromX, carryFromY;
 
-    public InputController(World world, Viewport viewport, Hud hud, WorldCamera camera) {
+    public InputController(World world, Viewport viewport, Hud hud, WorldCamera camera, MiniMap miniMap) {
         this.world = world;
         this.viewport = viewport;
         this.hud = hud;
         this.camera = camera;
+        this.miniMap = miniMap;
     }
 
     public boolean isCarrying() {
@@ -60,8 +63,9 @@ public class InputController {
 
         if (justDown) {
             int btn = hud.buttonAt(lx, ly);
-            hudCapture = btn >= 0;
-            if (hudCapture) hud.select(btn);
+            if (btn >= 0) hud.select(btn);
+            // a press on the palette or mini-map is UI, not a world action
+            hudCapture = btn >= 0 || miniMap.overMiniMap(lx, ly, camera);
         }
 
         Tool tool = hud.selected();
