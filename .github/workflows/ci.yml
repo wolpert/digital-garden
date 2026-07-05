@@ -30,8 +30,14 @@ jobs:
           java-version: '17'
           cache: gradle
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android platform 36
+        run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+
       # Builds core + desktop and runs the test task, and assembles the Android
-      # debug APK. ubuntu-latest ships the Android SDK (ANDROID_HOME is preset),
-      # which the android module reads in place of the git-ignored local.properties.
+      # debug APK. The android module reads ANDROID_HOME (set by setup-android)
+      # in place of the git-ignored local.properties.
       - name: Build & test
         run: ./gradlew :lwjgl3:build :android:assembleDebug --no-daemon --stacktrace
