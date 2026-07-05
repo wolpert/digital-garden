@@ -4,6 +4,7 @@ import java.util.Random;
 
 import com.digitalgarden.terrarium.Config;
 import com.digitalgarden.terrarium.Plant;
+import com.digitalgarden.terrarium.Settings;
 import com.digitalgarden.terrarium.TerrainType;
 import com.digitalgarden.terrarium.Tile;
 import com.digitalgarden.terrarium.World;
@@ -19,9 +20,11 @@ import com.digitalgarden.terrarium.World;
  */
 public class GrowthSystem {
     private final Random rng;
+    private final Settings settings;
 
-    public GrowthSystem(long seed) {
+    public GrowthSystem(long seed, Settings settings) {
         this.rng = new Random(seed);
+        this.settings = settings;
     }
 
     public void step(World world, float dt) {
@@ -42,7 +45,7 @@ public class GrowthSystem {
         Plant p = Plant.byId(t.plantType);
         if (p == null) { t.plantType = 0; return; }
 
-        if (t.rock || t.water > Config.FLOOD_KILL) { // uprooted or drowned
+        if (t.rock || t.water > settings.floodKill) { // uprooted or drowned
             kill(t);
             return;
         }
@@ -50,13 +53,13 @@ public class GrowthSystem {
         float q = p.quality(t.moisture);
         if (q <= 0f) {
             // too dry: wither, and eventually die
-            t.growth -= Config.DRY_DECAY * dt;
+            t.growth -= settings.dryDecay * dt;
             if (t.growth < Config.DEATH_MARGIN) kill(t);
             return;
         }
 
         if (t.growth < 1f) {
-            t.growth += p.rate * q * dt;
+            t.growth += p.rate * settings.growthRate * q * dt;
             if (t.growth >= 1f) {
                 t.growth = 1f;
                 mature(t, p);

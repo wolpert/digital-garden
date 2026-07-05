@@ -3,6 +3,7 @@ package com.digitalgarden.terrarium.sim;
 import java.util.Arrays;
 
 import com.digitalgarden.terrarium.Config;
+import com.digitalgarden.terrarium.Settings;
 import com.digitalgarden.terrarium.TerrainType;
 import com.digitalgarden.terrarium.Tile;
 import com.digitalgarden.terrarium.World;
@@ -20,9 +21,11 @@ import com.digitalgarden.terrarium.World;
  */
 public class FluidSystem {
     private final float[] delta;
+    private final Settings settings;
 
-    public FluidSystem(World world) {
+    public FluidSystem(World world, Settings settings) {
         delta = new float[world.tiles.length];
+        this.settings = settings;
     }
 
     /** Advances the fluid by one fixed sim tick. */
@@ -57,7 +60,7 @@ public class FluidSystem {
                 // total "equalizing" outflow is sum*0.5. Damp it, then cap so we
                 // never move more water than the tile actually holds.
                 float proposed = sum * 0.5f;
-                float scale = Config.FLOW_DAMP;
+                float scale = settings.flowDamp;
                 if (proposed * scale > wi) scale = wi / proposed;
                 scale *= 0.5f; // drop/2 -> per-neighbor factor
 
@@ -97,7 +100,7 @@ public class FluidSystem {
                 if (t.water > Config.FLUID_MIN) {
                     float factor = t.terrain == TerrainType.SAND ? Config.EVAP_SAND
                             : t.terrain == TerrainType.TREES ? Config.EVAP_TREES : 1f;
-                    t.water -= Config.EVAP_BASE * factor;
+                    t.water -= settings.evapBase * factor;
                     if (t.water < Config.FLUID_MIN) t.water = 0f;
                     t.moisture = 1f; // submerged ground is saturated
                 } else {

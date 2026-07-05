@@ -10,6 +10,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.digitalgarden.terrarium.input.CameraController;
+import com.digitalgarden.terrarium.input.DialPanel;
 import com.digitalgarden.terrarium.input.Hud;
 import com.digitalgarden.terrarium.input.InputController;
 import com.digitalgarden.terrarium.render.MiniMap;
@@ -37,12 +38,14 @@ public class Terrarium extends ApplicationAdapter {
     private PixelRenderer renderer;
     private MiniMap miniMap;
     private World world;
+    private Settings settings;
     private FluidSystem fluid;
     private WeatherSystem weather;
     private GrowthSystem growth;
     private WorldCamera camera;
     private CameraController cameraController;
     private Hud hud;
+    private DialPanel dials;
     private InputController input;
     private float time;
     private float simAccumulator;
@@ -55,15 +58,17 @@ public class Terrarium extends ApplicationAdapter {
         uiCam = new OrthographicCamera();
         uiCam.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         world = new World(Config.SEED);
-        fluid = new FluidSystem(world);
-        weather = new WeatherSystem(world, Config.SEED * 13 + 5);
-        growth = new GrowthSystem(Config.SEED * 7 + 1);
+        settings = new Settings();
+        fluid = new FluidSystem(world, settings);
+        weather = new WeatherSystem(world, Config.SEED * 13 + 5, settings);
+        growth = new GrowthSystem(Config.SEED * 7 + 1, settings);
         camera = new WorldCamera();
         cameraController = new CameraController(viewport, camera);
         hud = new Hud(viewport);
+        dials = new DialPanel(viewport, settings);
         renderer = new PixelRenderer();
         miniMap = new MiniMap();
-        input = new InputController(world, viewport, hud, camera, miniMap);
+        input = new InputController(world, viewport, hud, camera, miniMap, dials);
     }
 
     @Override
@@ -86,6 +91,7 @@ public class Terrarium extends ApplicationAdapter {
         batch.end();
 
         miniMap.render(batch, shapes, viewport.getCamera(), world, camera);
+        dials.render(shapes, batch, uiCam);
         hud.render(shapes, batch, uiCam, camera, input.isCarrying());
     }
 
@@ -117,6 +123,7 @@ public class Terrarium extends ApplicationAdapter {
         shapes.dispose();
         renderer.dispose();
         miniMap.dispose();
+        dials.dispose();
         hud.dispose();
     }
 }

@@ -37,6 +37,11 @@ While zoomed in, a **mini-map** in the top-right shows the whole world with a
 rectangle marking your current view. Click or drag on it to jump the camera
 there.
 
+A row of **dials** in the lower-right tunes the simulation live — rain, wind,
+water flow, evaporation, growth, and the two death modes (wither from drought,
+rot from flooding). Drag a dial up/down to turn it (each is a multiplier of the
+default, `1.0x`); hover it to see its current setting.
+
 ## Running it
 
 Requires a JDK (17+). The bundled Gradle wrapper handles everything else.

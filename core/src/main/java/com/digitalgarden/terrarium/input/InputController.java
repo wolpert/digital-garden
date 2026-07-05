@@ -25,20 +25,25 @@ public class InputController {
     private final Hud hud;
     private final WorldCamera camera;
     private final MiniMap miniMap;
+    private final DialPanel dials;
     private final Vector3 tmp = new Vector3();
 
     private boolean wasTouched;
-    private boolean hudCapture;      // this press began on the palette or mini-map
+    private boolean hudCapture;      // this press began on a UI element (palette/mini-map/dial)
     private boolean miniMapCapture;  // ...specifically on the mini-map (drag to scrub)
+    private int dialCapture = -1;    // ...specifically on a dial (drag to turn)
+    private float lastDialY;
     private boolean carrying;        // holding a picked-up rock
     private int carryFromX, carryFromY;
 
-    public InputController(World world, Viewport viewport, Hud hud, WorldCamera camera, MiniMap miniMap) {
+    public InputController(World world, Viewport viewport, Hud hud, WorldCamera camera,
+                           MiniMap miniMap, DialPanel dials) {
         this.world = world;
         this.viewport = viewport;
         this.hud = hud;
         this.camera = camera;
         this.miniMap = miniMap;
+        this.dials = dials;
     }
 
     public boolean isCarrying() {
@@ -65,14 +70,23 @@ public class InputController {
         if (justDown) {
             int btn = hud.buttonAt(lx, ly);
             if (btn >= 0) hud.select(btn);
-            // a press on the palette or mini-map is UI, not a world action
-            miniMapCapture = btn < 0 && miniMap.overMiniMap(lx, ly, camera);
-            hudCapture = btn >= 0 || miniMapCapture;
+            int dial = (btn < 0) ? dials.dialAt(lx, ly) : -1;
+            dialCapture = dial;
+            if (dial >= 0) lastDialY = ly;
+            // a press on the palette / mini-map / dials is UI, not a world action
+            miniMapCapture = btn < 0 && dial < 0 && miniMap.overMiniMap(lx, ly, camera);
+            hudCapture = btn >= 0 || dial >= 0 || miniMapCapture;
         }
 
         // hold/drag on the mini-map jumps the camera to that spot
         if (miniMapCapture && touched) {
             miniMap.jumpTo(lx, ly, camera);
+        }
+
+        // hold/drag on a dial turns it (drag up = more)
+        if (dialCapture >= 0 && touched) {
+            dials.nudge(dialCapture, (ly - lastDialY) / 55f);
+            lastDialY = ly;
         }
 
         Tool tool = hud.selected();
@@ -99,6 +113,7 @@ public class InputController {
         if (justUp) {
             hudCapture = false;
             miniMapCapture = false;
+            dialCapture = -1;
         }
         wasTouched = touched;
     }
