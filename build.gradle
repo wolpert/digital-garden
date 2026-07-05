@@ -3,7 +3,7 @@ allprojects {
 
     ext {
         appName = 'Terrarium'
-        gdxVersion = '1.13.1'
+        gdxVersion = '1.14.2'
     }
 
     repositories {
