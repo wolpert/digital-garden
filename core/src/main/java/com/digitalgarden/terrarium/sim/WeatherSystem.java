@@ -1,6 +1,7 @@
 package com.digitalgarden.terrarium.sim;
 
 import com.digitalgarden.terrarium.Config;
+import com.digitalgarden.terrarium.Settings;
 import com.digitalgarden.terrarium.Tile;
 import com.digitalgarden.terrarium.World;
 import com.digitalgarden.terrarium.util.Noise;
@@ -24,11 +25,14 @@ public class WeatherSystem {
     private float windX, windY; // current wind (cloud-noise units/second)
     private float stormLevel;   // 0 = clear .. 1 = heavy rain
 
-    public WeatherSystem(World world, long seed) {
+    private final Settings settings;
+
+    public WeatherSystem(World world, long seed, Settings settings) {
         this.W = world.w;
         this.H = world.h;
         this.cloud = new float[W * H];
         this.cloudNoise = new Noise(seed);
+        this.settings = settings;
     }
 
     /** Advances weather by one fixed sim tick and rains onto the world. */
@@ -38,8 +42,8 @@ public class WeatherSystem {
         // Wind direction wanders; drift the cloud field along it.
         float angle = 0.7f * (float) Math.sin(weatherTime * 0.05f)
                     + 0.4f * (float) Math.sin(weatherTime * 0.017f + 1.3f);
-        windX = (float) Math.cos(angle) * Config.WIND_SPEED;
-        windY = (float) Math.sin(angle) * Config.WIND_SPEED;
+        windX = (float) Math.cos(angle) * settings.windSpeed;
+        windY = (float) Math.sin(angle) * settings.windSpeed;
         offX += windX * dt;
         offY += windY * dt;
 
@@ -60,7 +64,7 @@ public class WeatherSystem {
                     Tile t = world.tiles[y * W + x];
                     if (!t.rock) {
                         float rain = over * stormLevel;
-                        t.water += rain * Config.RAIN_RATE * dt;
+                        t.water += rain * settings.rainRate * dt;
                         t.moisture = Math.min(1f, t.moisture + rain * Config.RAIN_MOISTURE * dt);
                     }
                 }
