@@ -5,7 +5,7 @@
         android:label="Terrarium"
         android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
         <activity
-            android:name=".AndroidLauncher"
+            android:name=".android.AndroidLauncher"
             android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|screenLayout"
             android:screenOrientation="landscape"
             android:exported="true">

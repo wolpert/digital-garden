@@ -36,8 +36,9 @@ jobs:
       - name: Install Android platform 36
         run: sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
-      # Builds core + desktop and runs the test task, and assembles the Android
-      # debug APK. The android module reads ANDROID_HOME (set by setup-android)
-      # in place of the git-ignored local.properties.
+      # Full build of every module: compiles core + desktop + android, runs the
+      # test task and Android lint, and assembles the APKs. Matches a local
+      # `./gradlew build`. The android module reads ANDROID_HOME (from
+      # setup-android) in place of the git-ignored local.properties.
       - name: Build & test
-        run: ./gradlew :lwjgl3:build :android:assembleDebug --no-daemon --stacktrace
+        run: ./gradlew build --no-daemon --stacktrace
