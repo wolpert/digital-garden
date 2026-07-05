@@ -28,8 +28,9 @@ public class InputController {
     private final Vector3 tmp = new Vector3();
 
     private boolean wasTouched;
-    private boolean hudCapture;   // this press began on the palette or mini-map
-    private boolean carrying;     // holding a picked-up rock
+    private boolean hudCapture;      // this press began on the palette or mini-map
+    private boolean miniMapCapture;  // ...specifically on the mini-map (drag to scrub)
+    private boolean carrying;        // holding a picked-up rock
     private int carryFromX, carryFromY;
 
     public InputController(World world, Viewport viewport, Hud hud, WorldCamera camera, MiniMap miniMap) {
@@ -65,7 +66,13 @@ public class InputController {
             int btn = hud.buttonAt(lx, ly);
             if (btn >= 0) hud.select(btn);
             // a press on the palette or mini-map is UI, not a world action
-            hudCapture = btn >= 0 || miniMap.overMiniMap(lx, ly, camera);
+            miniMapCapture = btn < 0 && miniMap.overMiniMap(lx, ly, camera);
+            hudCapture = btn >= 0 || miniMapCapture;
+        }
+
+        // hold/drag on the mini-map jumps the camera to that spot
+        if (miniMapCapture && touched) {
+            miniMap.jumpTo(lx, ly, camera);
         }
 
         Tool tool = hud.selected();
@@ -89,7 +96,10 @@ public class InputController {
             }
         }
 
-        if (justUp) hudCapture = false;
+        if (justUp) {
+            hudCapture = false;
+            miniMapCapture = false;
+        }
         wasTouched = touched;
     }
 

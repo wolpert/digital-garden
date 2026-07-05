@@ -58,6 +58,21 @@ public class MiniMap implements Disposable {
         return lx >= x - 2 && lx <= x + MM_W + 2 && ly >= y - 2 && ly <= y + MM_H + 2;
     }
 
+    /** Jumps the camera so its view centers on the world point clicked on the mini-map. */
+    public void jumpTo(float lx, float ly, WorldCamera cam) {
+        if (!visible(cam)) return;
+        float x = Config.VIEW_W - MM_W - INSET;
+        float y = Config.VIEW_H - MM_H - INSET;
+        float localX = clamp(lx - x, 0f, MM_W);           // from mini-map's left
+        float localTop = clamp((y + MM_H) - ly, 0f, MM_H); // logical y-up -> top-origin
+        cam.centerOn(localX / MM_W * Config.WORLD_PX_W,
+                     localTop / MM_H * Config.WORLD_PX_H);
+    }
+
+    private static float clamp(float v, float lo, float hi) {
+        return v < lo ? lo : (v > hi ? hi : v);
+    }
+
     /** Draws the mini-map, unless the camera is zoomed out to (near) the whole world. */
     public void render(SpriteBatch batch, ShapeRenderer sr, Camera viewCam, World world, WorldCamera cam) {
         if (!visible(cam)) return;

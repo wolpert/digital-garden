@@ -34,7 +34,8 @@ The world is rendered at the pixel level — colors *are* the landscape:
 | **Zoom** | Mouse wheel (toward the cursor) | Pinch |
 
 While zoomed in, a **mini-map** in the top-right shows the whole world with a
-rectangle marking your current view.
+rectangle marking your current view. Click or drag on it to jump the camera
+there.
 
 ## Running it
 

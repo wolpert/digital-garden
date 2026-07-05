@@ -31,6 +31,13 @@ public class WorldCamera {
         clamp();
     }
 
+    /** Centers the view on a world-pixel point (e.g. a mini-map click). */
+    public void centerOn(float worldPxX, float worldPxY) {
+        x = worldPxX - visibleW() * 0.5f;
+        y = worldPxY - visibleH() * 0.5f;
+        clamp();
+    }
+
     /** Multiplies the zoom, keeping the world point under (focusVx,focusVy) fixed. */
     public void zoomBy(float factor, float focusVx, float focusVy) {
         zoomTo(zoom * factor, focusVx, focusVy);
