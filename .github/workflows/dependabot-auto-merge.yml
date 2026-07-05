@@ -1,0 +1,31 @@
+name: Dependabot auto-merge
+
+# When Dependabot opens a PR, turn on GitHub's auto-merge. GitHub then merges the
+# PR automatically once the required status checks (the CI "Build & test" job)
+# pass. See .github/README-dependabot.md for the one-time repo settings this needs.
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: ${{ github.actor == 'dependabot[bot]' }}
+    steps:
+      - name: Fetch Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@v2
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Enable auto-merge (squash). GitHub holds the merge until required checks pass.
+      # To auto-merge only non-major bumps, add to the condition below:
+      #   && steps.metadata.outputs.update-type != 'version-update:semver-major'
+      - name: Enable auto-merge
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
