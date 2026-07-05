@@ -23,8 +23,9 @@ was present when the project was created. The desktop build works without it.
 
 ## Notes
 - The Android Gradle Plugin version is pinned in `android/build.gradle`
-  (`com.android.application` `8.7.2`). If Gradle reports an incompatibility, bump it to
-  a version compatible with your Gradle wrapper.
+  (`com.android.application` `9.2.1`, needs Gradle 9.4.1+ and `compileSdk 36`).
+  If Gradle reports an incompatibility, bump it to a version compatible with your
+  Gradle wrapper.
 - `copyAndroidNatives` unpacks the libGDX native `.so` files into `android/libs/`
   before the APK is assembled.
 - The launcher shares 100% of the game logic in `core` — same `Terrarium` class as desktop.
