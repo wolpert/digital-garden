@@ -1,12 +1,12 @@
-// Android module — DISABLED by default (not included in settings.gradle).
-// Requires the Android SDK. See android/README.md to enable.
+// Android module. Requires the Android SDK; the path is in local.properties.
+// See android/README.md.
 plugins {
-    id 'com.android.application' version '8.7.2'
+    id 'com.android.application' version '9.2.1'
 }
 
 android {
     namespace 'com.digitalgarden.terrarium'
-    compileSdk 34
+    compileSdk 36
 
     sourceSets {
         main {
@@ -20,7 +20,7 @@ android {
     defaultConfig {
         applicationId 'com.digitalgarden.terrarium'
         minSdk 21
-        targetSdk 34
+        targetSdk 36
         versionCode 1
         versionName '0.1.0'
     }
@@ -28,10 +28,6 @@ android {
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
-    }
-
-    packaging {
-        resources.excludes += ['META-INF/robovm/ios/robovm.xml']
     }
 }
 

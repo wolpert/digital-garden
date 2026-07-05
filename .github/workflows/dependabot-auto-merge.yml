@@ -17,14 +17,15 @@ jobs:
     steps:
       - name: Fetch Dependabot metadata
         id: metadata
-        uses: dependabot/fetch-metadata@v2
+        uses: dependabot/fetch-metadata@v3
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Enable auto-merge (squash). GitHub holds the merge until required checks pass.
-      # To auto-merge only non-major bumps, add to the condition below:
-      #   && steps.metadata.outputs.update-type != 'version-update:semver-major'
+      # Enable auto-merge (squash) for non-major bumps only. GitHub holds the
+      # merge until required checks pass. Major bumps are left open for a human,
+      # since they most often need coordinated changes (as an AGP 8->9 bump did).
       - name: Enable auto-merge
+        if: ${{ steps.metadata.outputs.update-type != 'version-update:semver-major' }}
         run: gh pr merge --auto --squash "$PR_URL"
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
