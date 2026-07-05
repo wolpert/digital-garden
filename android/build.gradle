@@ -1,7 +1,7 @@
 // Android module — DISABLED by default (not included in settings.gradle).
 // Requires the Android SDK. See android/README.md to enable.
 plugins {
-    id 'com.android.application' version '8.7.2'
+    id 'com.android.application' version '9.2.1'
 }
 
 android {
