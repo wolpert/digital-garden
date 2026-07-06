@@ -7,4 +7,7 @@ java {
 
 dependencies {
     api "com.badlogicgames.gdx:gdx:$gdxVersion"
+    // JSyn: procedural audio synthesis (Apache-2.0). Exposed as `api` so the desktop
+    // render harness in :lwjgl3 can compile against JSyn types too. See SOUND.md.
+    api "com.github.philburk:jsyn:v17.2.0"
 }

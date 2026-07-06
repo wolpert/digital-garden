@@ -114,6 +114,18 @@ public final class Config {
     /** Chance per second a mature tree/flower seeds a suitable neighbor. */
     public static final float SPREAD_CHANCE = 0.03f;
 
+    // --- Audio (procedural sound; see SOUND.md) ---
+    /** Output sample rate for the synth and the libGDX audio device. */
+    public static final int AUDIO_SAMPLE_RATE = 44100;
+    /** Default master volume. Deliberately low — this is a calm sandbox, not an arcade. */
+    public static final float MASTER_VOLUME = 0.35f;
+    /** How fast the bridge ramps toward a new master gain, per output sample. Small =
+     *  slow, click-free change (~30 ms time constant at 44.1 kHz); prevents zipper noise. */
+    public static final float AUDIO_GAIN_RAMP = 0.0008f;
+    /** Infra test tone (Slice 1): a quiet steady sine to prove the output path. */
+    public static final float TEST_TONE_HZ = 220f;
+    public static final float TEST_TONE_AMP = 0.2f;
+
     // --- Moisture-driven terrain transitions (chance per second) ---
     public static final float WET_MOISTURE = 0.60f;   // above this, dirt greens
     public static final float DRY_MOISTURE = 0.16f;   // below this, grass browns

@@ -2,6 +2,7 @@ package com.digitalgarden.terrarium;
 
 import com.badlogic.gdx.ApplicationAdapter;
 import com.badlogic.gdx.Gdx;
+import com.badlogic.gdx.Input;
 import com.badlogic.gdx.graphics.OrthographicCamera;
 import com.badlogic.gdx.graphics.Texture;
 import com.badlogic.gdx.graphics.g2d.SpriteBatch;
@@ -21,6 +22,7 @@ import com.digitalgarden.terrarium.sim.GrowthSystem;
 import com.digitalgarden.terrarium.sim.SpringSystem;
 import com.digitalgarden.terrarium.sim.WeatherSystem;
 import com.digitalgarden.terrarium.fx.ParticleSystem;
+import com.digitalgarden.terrarium.audio.AudioSystem;
 import com.digitalgarden.terrarium.wildlife.WildlifeSystem;
 
 /**
@@ -48,6 +50,7 @@ public class Terrarium extends ApplicationAdapter {
     private GrowthSystem growth;
     private WildlifeSystem wildlife;
     private ParticleSystem particles;
+    private AudioSystem audio;
     private WorldCamera camera;
     private CameraController cameraController;
     private Hud hud;
@@ -71,6 +74,7 @@ public class Terrarium extends ApplicationAdapter {
         weather = new WeatherSystem(world, Config.SEED * 13 + 5, settings);
         growth = new GrowthSystem(Config.SEED * 7 + 1, settings, particles);
         wildlife = new WildlifeSystem(world, Config.SEED * 17 + 3);
+        audio = new AudioSystem(settings);
         camera = new WorldCamera();
         cameraController = new CameraController(viewport, camera);
         hud = new Hud(viewport);
@@ -109,6 +113,9 @@ public class Terrarium extends ApplicationAdapter {
 
     /** Handles input and camera, then advances the sim on a fixed timestep. */
     private void update(float dt) {
+        if (Gdx.input.isKeyJustPressed(Input.Keys.M)) {
+            audio.toggleMute();
+        }
         cameraController.update(dt);
         input.update(dt);
         simAccumulator += dt;
@@ -124,12 +131,24 @@ public class Terrarium extends ApplicationAdapter {
         }
         wildlife.update(dt); // continuous entities, smooth per-frame motion
         particles.update(world, weather, camera, dt);
+        audio.update(dt);    // maps live state to ambient audio params (voices come later)
     }
 
     @Override
     public void resize(int width, int height) {
         viewport.update(width, height, true);
         uiCam.setToOrtho(false, width, height);
+    }
+
+    @Override
+    public void pause() {
+        // Android backgrounding: stop the audio thread (writeSamples would otherwise block).
+        if (audio != null) audio.pause();
+    }
+
+    @Override
+    public void resume() {
+        if (audio != null) audio.resume();
     }
 
     @Override
@@ -140,5 +159,6 @@ public class Terrarium extends ApplicationAdapter {
         miniMap.dispose();
         dials.dispose();
         hud.dispose();
+        if (audio != null) audio.dispose();
     }
 }

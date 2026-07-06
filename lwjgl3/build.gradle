@@ -20,3 +20,15 @@ dependencies {
     implementation "com.badlogicgames.gdx:gdx-backend-lwjgl3:$gdxVersion"
     implementation "com.badlogicgames.gdx:gdx-platform:$gdxVersion:natives-desktop"
 }
+
+// Offline audio render + validation harness (SOUND.md Slice 2). Renders sounds in
+// isolation to build/audio/ with objective checks + waveform/spectrogram PNGs.
+//   ./gradlew :lwjgl3:renderAudio                 (all sounds)
+//   ./gradlew :lwjgl3:renderAudio --args="wind"   (one sound)
+tasks.register('renderAudio', JavaExec) {
+    group = 'audio'
+    description = 'Render procedural sounds in isolation to build/audio/ (WAV + checks + PNGs).'
+    workingDir = rootProject.projectDir
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.digitalgarden.terrarium.lwjgl3.audio.AudioRenderMain'
+}

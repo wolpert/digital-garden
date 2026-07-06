@@ -21,4 +21,10 @@ public class Settings {
     /** Rot / die. */
     public float dryDecay = Config.DRY_DECAY;   // how fast dry plants wither
     public float floodKill = Config.FLOOD_KILL;  // water depth that rots a plant
+
+    /** Audio. Master output level [0..1] and a global mute (toggled with M). Read live
+     *  by the audio bridge, which ramps toward the effective gain to avoid clicks. Kept
+     *  here (not just Config) so it can later get a dial, like the sim parameters. */
+    public float masterVolume = Config.MASTER_VOLUME;
+    public boolean audioMuted = false;
 }
