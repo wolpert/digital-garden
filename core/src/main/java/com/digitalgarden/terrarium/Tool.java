@@ -14,7 +14,9 @@ public enum Tool {
     SEED_FLOWER(Plant.FLOWER, "Flower seed", new Color(0.86f, 0.35f, 0.62f, 1f)),
     ROCK(null, "Move rock", new Color(0.50f, 0.50f, 0.53f, 1f)),
     SPRING(null, "Spring (source)", new Color(0.40f, 0.85f, 0.95f, 1f)),
-    DRAIN(null, "Drain (sink)", new Color(0.16f, 0.20f, 0.40f, 1f));
+    DRAIN(null, "Drain (sink)", new Color(0.16f, 0.20f, 0.40f, 1f)),
+    RAISE(null, "Raise land", new Color(0.68f, 0.54f, 0.38f, 1f)),
+    LOWER(null, "Lower land", new Color(0.36f, 0.28f, 0.22f, 1f));
 
     /** The seed this tool plants, or null for non-planting tools. */
     public final Plant seed;
