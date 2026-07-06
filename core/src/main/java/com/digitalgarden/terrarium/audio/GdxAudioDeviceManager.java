@@ -51,7 +51,7 @@ public final class GdxAudioDeviceManager implements AudioDeviceManager {
             if (buf.length < count) {
                 buf = new float[count];
             }
-            final float target = settings.audioMuted ? 0f : settings.masterVolume;
+            final float target = settings.soundVolume();
             for (int i = 0; i < count; i++) {
                 gain += (target - gain) * Config.AUDIO_GAIN_RAMP;
                 buf[i] = softClip(data[start + i] * gain);

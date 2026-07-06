@@ -81,14 +81,23 @@ public final class AudioSystem {
         // Reserved for ambient parameter mapping; see SOUND.md "Parameter mapping".
     }
 
-    /** Flips global mute. The bridge ramps the master gain to/from zero, so it's click-free. */
+    /** Level to restore to when unmuting from the M key (if the slider is at Off). */
+    private int preMuteLevel = Config.SOUND_LEVEL_DEFAULT;
+
+    /** M-key mute toggle: drops the sound level to Off, or restores the last audible level.
+     *  The bridge ramps the master gain to/from zero, so it's click-free. */
     public void toggleMute() {
-        settings.audioMuted = !settings.audioMuted;
-        Gdx.app.log("AudioSystem", settings.audioMuted ? "muted" : "unmuted");
+        if (settings.soundLevel > 0) {
+            preMuteLevel = settings.soundLevel;
+            settings.setSoundLevel(0);
+        } else {
+            settings.setSoundLevel(preMuteLevel);
+        }
+        Gdx.app.log("AudioSystem", isMuted() ? "muted" : "unmuted (level " + settings.soundLevel + ")");
     }
 
     public boolean isMuted() {
-        return settings.audioMuted;
+        return settings.soundLevel == 0;
     }
 
     /** Stop audio when the app is backgrounded (Android lifecycle). Safe to call repeatedly. */

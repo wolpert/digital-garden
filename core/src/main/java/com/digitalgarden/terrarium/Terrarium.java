@@ -11,6 +11,7 @@ import com.badlogic.gdx.utils.ScreenUtils;
 import com.badlogic.gdx.utils.viewport.FitViewport;
 import com.badlogic.gdx.utils.viewport.Viewport;
 import com.digitalgarden.terrarium.input.CameraController;
+import com.digitalgarden.terrarium.input.ConfigMenu;
 import com.digitalgarden.terrarium.input.DialPanel;
 import com.digitalgarden.terrarium.input.Hud;
 import com.digitalgarden.terrarium.input.InputController;
@@ -55,6 +56,7 @@ public class Terrarium extends ApplicationAdapter {
     private CameraController cameraController;
     private Hud hud;
     private DialPanel dials;
+    private ConfigMenu config;
     private InputController input;
     private float time;
     private float simAccumulator;
@@ -79,9 +81,10 @@ public class Terrarium extends ApplicationAdapter {
         cameraController = new CameraController(viewport, camera);
         hud = new Hud(viewport);
         dials = new DialPanel(viewport, settings);
+        config = new ConfigMenu(viewport, settings);
         renderer = new PixelRenderer();
         miniMap = new MiniMap();
-        input = new InputController(world, viewport, hud, camera, miniMap, dials, springs, particles);
+        input = new InputController(world, viewport, hud, camera, miniMap, dials, config, springs, particles);
     }
 
     @Override
@@ -109,6 +112,7 @@ public class Terrarium extends ApplicationAdapter {
         miniMap.render(batch, shapes, viewport.getCamera(), world, camera);
         dials.render(shapes, batch, uiCam);
         hud.render(shapes, batch, uiCam, camera, input.isCarrying());
+        config.render(shapes, batch, uiCam); // last: the popup window draws on top
     }
 
     /** Handles input and camera, then advances the sim on a fixed timestep. */
@@ -159,6 +163,7 @@ public class Terrarium extends ApplicationAdapter {
         miniMap.dispose();
         dials.dispose();
         hud.dispose();
+        config.dispose();
         if (audio != null) audio.dispose();
     }
 }

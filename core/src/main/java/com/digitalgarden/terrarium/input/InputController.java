@@ -29,26 +29,30 @@ public class InputController {
     private final WorldCamera camera;
     private final MiniMap miniMap;
     private final DialPanel dials;
+    private final ConfigMenu config;
     private final SpringSystem springs;
     private final ParticleSystem particles;
     private final Vector3 tmp = new Vector3();
 
     private boolean wasTouched;
-    private boolean hudCapture;      // this press began on a UI element (palette/mini-map/dial)
+    private boolean hudCapture;      // this press began on a UI element (palette/mini-map/dial/config)
     private boolean miniMapCapture;  // ...specifically on the mini-map (drag to scrub)
     private int dialCapture = -1;    // ...specifically on a dial (drag to turn)
+    private boolean sliderCapture;   // ...specifically on the config sound slider (drag to set)
     private float lastDialY;
     private boolean carrying;        // holding a picked-up rock
     private int carryFromX, carryFromY;
 
     public InputController(World world, Viewport viewport, Hud hud, WorldCamera camera,
-                           MiniMap miniMap, DialPanel dials, SpringSystem springs, ParticleSystem particles) {
+                           MiniMap miniMap, DialPanel dials, ConfigMenu config,
+                           SpringSystem springs, ParticleSystem particles) {
         this.world = world;
         this.viewport = viewport;
         this.hud = hud;
         this.camera = camera;
         this.miniMap = miniMap;
         this.dials = dials;
+        this.config = config;
         this.springs = springs;
         this.particles = particles;
     }
@@ -75,14 +79,32 @@ public class InputController {
         int cy = wy / Config.TILE_SIZE;
 
         if (justDown) {
-            int btn = hud.buttonAt(lx, ly);
+            sliderCapture = false;
+            // The config menu (top-left) has first claim on a press.
+            boolean cfg = false;
+            if (config.buttonAt(lx, ly)) {
+                config.toggle();
+                cfg = true;
+            } else if (config.overWindow(lx, ly)) {
+                cfg = true;
+                if (config.overSlider(lx, ly)) {
+                    config.setLevelFromX(lx);
+                    sliderCapture = true;
+                }
+            }
+            int btn = cfg ? -1 : hud.buttonAt(lx, ly);
             if (btn >= 0) hud.select(btn);
-            int dial = (btn < 0) ? dials.dialAt(lx, ly) : -1;
+            int dial = (!cfg && btn < 0) ? dials.dialAt(lx, ly) : -1;
             dialCapture = dial;
             if (dial >= 0) lastDialY = ly;
-            // a press on the palette / mini-map / dials is UI, not a world action
-            miniMapCapture = btn < 0 && dial < 0 && miniMap.overMiniMap(lx, ly, camera);
-            hudCapture = btn >= 0 || dial >= 0 || miniMapCapture;
+            // a press on the config / palette / mini-map / dials is UI, not a world action
+            miniMapCapture = !cfg && btn < 0 && dial < 0 && miniMap.overMiniMap(lx, ly, camera);
+            hudCapture = cfg || btn >= 0 || dial >= 0 || miniMapCapture;
+        }
+
+        // hold/drag on the sound slider sets the level continuously
+        if (sliderCapture && touched) {
+            config.setLevelFromX(lx);
         }
 
         // hold/drag on the mini-map jumps the camera to that spot
@@ -133,6 +155,7 @@ public class InputController {
             hudCapture = false;
             miniMapCapture = false;
             dialCapture = -1;
+            sliderCapture = false;
         }
         wasTouched = touched;
     }
