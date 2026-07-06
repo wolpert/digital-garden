@@ -177,12 +177,11 @@ test on an Android device (AudioTrack latency + audio focus).
 Two infrastructure slices first, then **one sound at a time**, each taken through the
 iteration loop to approval before the next is started.
 
-1. **Pipeline proof (infra)** — add JSyn dep + JitPack repo; `AudioSystem` skeleton +
-   AudioDevice bridge thread + master gain/mute; a single **test tone**. Confirm it plays
-   on **desktop and Android**. Don't build voices until output works on both.
-2. **Render + validation harness (infra)** — render a *single named sound in isolation* to
-   a deterministic WAV, plus objective checks + waveform/spectrogram PNGs. This is what
-   makes the per-sound loop possible; build it before any real voice.
+1. **Pipeline proof (infra)** — ✅ **DONE (desktop-verified).** JSyn dep + JitPack repo;
+   `AudioSystem` skeleton + AudioDevice bridge + master gain/mute; a single **test tone**.
+   Confirmed on **desktop**; Android steps noted below (not yet run on a device).
+2. **Render + validation harness (infra)** — ✅ **DONE.** Renders a *single named sound in
+   isolation* to a deterministic WAV, plus objective checks + waveform/spectrogram PNGs.
 3. **Each sound, independently** — implement → render in isolation → **iterate with the
    user until approved** → lock → next. Suggested order (each its own loop):
    wind → rain → water → pour splash → rock thud → sprout blip → birds.
@@ -190,6 +189,56 @@ iteration loop to approval before the next is started.
    relative levels + reverb, wire to live game state (`weather`/`settings`/water amount),
    and iterate on the whole bed together.
 5. **Android device pass** — verify on a real device (latency, audio focus, lifecycle).
+
+## Infra as built (what slices 1 & 2 actually shipped)
+
+The two infra slices are implemented and desktop-verified. Details future-you needs:
+
+**Files.**
+- `core/.../audio/AudioSystem.java` — live engine; mirrors `ParticleSystem`. Built in
+  `Terrarium.create()`, ticked from `Terrarium.update` via `audio.update(dt)`, and hooked
+  into `dispose()` / `pause()` / `resume()`. Master gain + mute live in `Settings`
+  (`masterVolume`, `audioMuted`); **`M`** toggles mute (handled in `Terrarium.update`).
+- `core/.../audio/GdxAudioDeviceManager.java` — the bridge. A custom JSyn
+  `AudioDeviceManager` whose output stream applies **ramped** master gain + a soft-clip
+  limiter and forwards frames to `Gdx.audio.newAudioDevice(44100, stereo)`. libGDX's
+  blocking `writeSamples` paces JSyn's engine thread, so **that engine thread is the audio
+  thread** — the render thread only writes `Settings`. (We did *not* build a separate
+  pull-mode daemon; the blocking-bridge achieves the same one-output-path goal more simply.)
+- `core/.../audio/SoundLibrary.java` — shared voice catalogue; the same patch feeds the
+  live engine and the offline harness. Only `test-tone` (a quiet 220 Hz sine) exists yet.
+  Add a real voice = one `case` here.
+- `lwjgl3/.../audio/AudioRenderMain.java` (+ `WavFile`, `Fft`, `SignalChecks`, `Plots`) —
+  the offline harness. Pure Java, **no python/sox/ffmpeg** and **no audio hardware**: JSyn
+  in `setRealTime(false)` with 0 in/out channels, `WaveRecorder` taps the graph, then a
+  self-written WAV reader + radix-2 FFT drive the checks and Java2D PNGs.
+
+**Audio-tuning constants** are in `Config` (`AUDIO_SAMPLE_RATE`, `MASTER_VOLUME` = 0.35 low
+default, `AUDIO_GAIN_RAMP`, `TEST_TONE_*`).
+
+**Run the harness:** `./gradlew :lwjgl3:renderAudio` (all sounds) or
+`--args="wind"` (one). Outputs `build/audio/<sound>.wav` + `.waveform.png` +
+`.spectrogram.png`; prints the checks; **exits non-zero if any hard check fails**
+(clipping / clicks / silence) so it can gate a build. Verified: the test tone renders to
+219 Hz-dominant, peak 0.20, no clip/clicks, DC 0.
+
+**Android — not yet run, but the design already accounts for it (steps to verify):**
+- **No JSyn Android artifact is needed.** We replaced JSyn's device layer with
+  `GdxAudioDeviceManager`, so JSyn's JavaSound/AudioTrack code never loads; **libGDX** owns
+  Android output (AudioTrack under `Gdx.audio.newAudioDevice`). JSyn core is pure Java with
+  no natives, so nothing goes in `android/libs` (the `natives` config there is libGDX-only).
+- `jsyn` reaches `:android` transitively — `core` declares it as **`api`** — so no change to
+  `android/build.gradle` is required.
+- Lifecycle is wired: `Terrarium.pause()`→`audio.pause()` stops the synth (so the blocking
+  `writeSamples` can't wedge a backgrounded app); `resume()` restarts it.
+- **To verify on device:** `./gradlew :android:assembleDebug` (needs the SDK), install, and
+  listen for the test tone; watch `logcat` for `AudioSystem: audio online`. Check audio
+  focus (pause on call/other app) and AudioTrack latency.
+- **Caveat:** if a release build later turns on R8/shrinking, add keep rules for `com.jsyn.**`
+  (debug builds don't shrink, so this doesn't affect the assembleDebug verification).
+
+**Next:** stop here and build the actual voices together, one at a time, starting with
+**wind**, via the per-sound iteration loop above.
 
 ## Gotchas / constraints (don't relearn these the hard way)
 
