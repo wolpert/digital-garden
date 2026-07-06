@@ -9,7 +9,9 @@ import com.digitalgarden.terrarium.Plant;
 import com.digitalgarden.terrarium.TerrainType;
 import com.digitalgarden.terrarium.Tile;
 import com.digitalgarden.terrarium.Tool;
+import com.badlogic.gdx.math.MathUtils;
 import com.digitalgarden.terrarium.World;
+import com.digitalgarden.terrarium.fx.ParticleSystem;
 import com.digitalgarden.terrarium.render.MiniMap;
 import com.digitalgarden.terrarium.render.WorldCamera;
 import com.digitalgarden.terrarium.sim.SpringSystem;
@@ -28,6 +30,7 @@ public class InputController {
     private final MiniMap miniMap;
     private final DialPanel dials;
     private final SpringSystem springs;
+    private final ParticleSystem particles;
     private final Vector3 tmp = new Vector3();
 
     private boolean wasTouched;
@@ -39,7 +42,7 @@ public class InputController {
     private int carryFromX, carryFromY;
 
     public InputController(World world, Viewport viewport, Hud hud, WorldCamera camera,
-                           MiniMap miniMap, DialPanel dials, SpringSystem springs) {
+                           MiniMap miniMap, DialPanel dials, SpringSystem springs, ParticleSystem particles) {
         this.world = world;
         this.viewport = viewport;
         this.hud = hud;
@@ -47,6 +50,7 @@ public class InputController {
         this.miniMap = miniMap;
         this.dials = dials;
         this.springs = springs;
+        this.particles = particles;
     }
 
     public boolean isCarrying() {
@@ -146,6 +150,9 @@ public class InputController {
                 t.water += Config.POUR_RATE * (1f - dist / r) * dt;
             }
         }
+        if (MathUtils.random() < 0.4f) {
+            particles.splash((cx + 0.5f) * Config.TILE_SIZE, (cy + 0.5f) * Config.TILE_SIZE, 2);
+        }
     }
 
     private void sculpt(int cx, int cy, float dt, float dir) {
@@ -195,6 +202,7 @@ public class InputController {
                 t.plantType = 0; // a dropped rock crushes any seedling
                 t.growth = 0f;
                 t.spring = 0;    // ...and caps a spring/drain (SpringSystem prunes it)
+                particles.dust((cx + 0.5f) * Config.TILE_SIZE, (cy + 0.5f) * Config.TILE_SIZE);
                 return;
             }
         }
