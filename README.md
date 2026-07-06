@@ -122,3 +122,7 @@ sea level, evaporation, growth rates, rain intensity, zoom limits — lives in
 
 Java 17 · libGDX 1.14.2 · Gradle (wrapper, 9.6.1). No external art or audio
 assets — the landscape and UI are drawn procedurally.
+
+## License
+
+[MIT](LICENSE) © Ned Wolpert
