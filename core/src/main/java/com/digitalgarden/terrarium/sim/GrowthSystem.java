@@ -8,6 +8,7 @@ import com.digitalgarden.terrarium.Settings;
 import com.digitalgarden.terrarium.TerrainType;
 import com.digitalgarden.terrarium.Tile;
 import com.digitalgarden.terrarium.World;
+import com.digitalgarden.terrarium.fx.ParticleSystem;
 
 /**
  * Turns moisture into life. Each tick it advances planted seeds through their
@@ -21,10 +22,12 @@ import com.digitalgarden.terrarium.World;
 public class GrowthSystem {
     private final Random rng;
     private final Settings settings;
+    private final ParticleSystem particles;
 
-    public GrowthSystem(long seed, Settings settings) {
+    public GrowthSystem(long seed, Settings settings, ParticleSystem particles) {
         this.rng = new Random(seed);
         this.settings = settings;
+        this.particles = particles;
     }
 
     public void step(World world, float dt) {
@@ -63,6 +66,7 @@ public class GrowthSystem {
             if (t.growth >= 1f) {
                 t.growth = 1f;
                 mature(t, p);
+                particles.sprout((x + 0.5f) * Config.TILE_SIZE, (y + 0.5f) * Config.TILE_SIZE);
             }
         } else {
             trySpread(world, x, y, p);

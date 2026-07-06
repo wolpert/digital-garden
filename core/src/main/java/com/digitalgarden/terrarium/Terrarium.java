@@ -20,6 +20,7 @@ import com.digitalgarden.terrarium.sim.FluidSystem;
 import com.digitalgarden.terrarium.sim.GrowthSystem;
 import com.digitalgarden.terrarium.sim.SpringSystem;
 import com.digitalgarden.terrarium.sim.WeatherSystem;
+import com.digitalgarden.terrarium.fx.ParticleSystem;
 import com.digitalgarden.terrarium.wildlife.WildlifeSystem;
 
 /**
@@ -46,6 +47,7 @@ public class Terrarium extends ApplicationAdapter {
     private WeatherSystem weather;
     private GrowthSystem growth;
     private WildlifeSystem wildlife;
+    private ParticleSystem particles;
     private WorldCamera camera;
     private CameraController cameraController;
     private Hud hud;
@@ -63,10 +65,11 @@ public class Terrarium extends ApplicationAdapter {
         uiCam.setToOrtho(false, Gdx.graphics.getWidth(), Gdx.graphics.getHeight());
         world = new World(Config.SEED);
         settings = new Settings();
+        particles = new ParticleSystem();
         fluid = new FluidSystem(world, settings);
         springs = new SpringSystem(world);
         weather = new WeatherSystem(world, Config.SEED * 13 + 5, settings);
-        growth = new GrowthSystem(Config.SEED * 7 + 1, settings);
+        growth = new GrowthSystem(Config.SEED * 7 + 1, settings, particles);
         wildlife = new WildlifeSystem(world, Config.SEED * 17 + 3);
         camera = new WorldCamera();
         cameraController = new CameraController(viewport, camera);
@@ -74,7 +77,7 @@ public class Terrarium extends ApplicationAdapter {
         dials = new DialPanel(viewport, settings);
         renderer = new PixelRenderer();
         miniMap = new MiniMap();
-        input = new InputController(world, viewport, hud, camera, miniMap, dials, springs);
+        input = new InputController(world, viewport, hud, camera, miniMap, dials, springs, particles);
     }
 
     @Override
@@ -97,6 +100,7 @@ public class Terrarium extends ApplicationAdapter {
         batch.end();
 
         wildlife.draw(shapes, viewport.getCamera(), camera, time);
+        particles.draw(shapes, viewport.getCamera(), camera);
 
         miniMap.render(batch, shapes, viewport.getCamera(), world, camera);
         dials.render(shapes, batch, uiCam);
@@ -119,6 +123,7 @@ public class Terrarium extends ApplicationAdapter {
             steps++;
         }
         wildlife.update(dt); // continuous entities, smooth per-frame motion
+        particles.update(world, weather, camera, dt);
     }
 
     @Override

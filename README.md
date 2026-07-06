@@ -39,6 +39,10 @@ While zoomed in, a **mini-map** in the top-right shows the whole world with a
 rectangle marking your current view. Click or drag on it to jump the camera
 there.
 
+Little **particle effects** add life and feedback: splashes when you pour or rain
+lands, expanding ripples on rained-on water, dust when a rock drops, a green pop
+when a plant matures, and pollen drifting over grass and flowers.
+
 The world is alive with **wildlife**: rabbits graze the grass (and over-graze it
 to dirt), drink and breed near water, and flee foxes that hunt them — a little
 predator/prey loop — while birds flock overhead, fish swim in the ponds, and
