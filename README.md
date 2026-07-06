@@ -76,34 +76,40 @@ See [`android/README.md`](android/README.md) for details.
 
 ## How it works
 
-The world is a grid of tiles (480×270), larger than the screen; the camera
-scrolls and zooms a 480×270 window over it. Each fixed simulation tick (~18/sec,
-decoupled from the render framerate) runs three systems in order:
+The world is **480×270 tiles**, larger than the screen; the camera scrolls and
+zooms a window over it. Each fixed simulation tick (~18/sec, decoupled from the
+render framerate) runs, in order — **weather** (rain), **springs** (player-placed
+sources), **fluid** (flow), **growth** — while **wildlife** and **particles**
+update every frame for smooth motion. The core simulation:
 
 1. **Weather** — a drifting noise-based cloud field carried by a wandering wind.
    Dense clouds rain, adding water and moisture; storms ebb through clear spells.
 2. **Fluid** — a shallow-water cellular automaton. Water flows only downhill
    (by terrain elevation + depth), conserving volume, so it pools in low ground
-   and settles flat. Rocks are impermeable walls. Water slowly evaporates.
+   and settles flat. Rocks are impermeable walls; springs and drains add/remove
+   water; sculpting the elevation reroutes the flow. Water slowly evaporates.
 3. **Growth** — seeds germinate and grow when moisture is right, stall and die
    when too dry, and rot when flooded. Grass and trees mature into their terrain;
    flowers bloom. Moisture also nudges terrain itself: wet dirt greens into grass,
    dry grass browns to dirt, dry shoreline dirt turns to sand.
 
 The **renderer** paints the visible window per-pixel into an offscreen buffer,
-adding per-tile hue variation, dithering, terrain-edge shading, animated water
-shimmer, cloud shadows and rain streaks.
+adding per-tile hue variation, dithering, terrain-edge shading, elevation relief,
+animated water shimmer, cloud shadows and rain streaks.
 
 ### Project layout
 
 ```
 core/     All game logic, shared by every platform:
   Config.java            every tuning constant in one place
+  Settings.java          runtime-adjustable params (driven by the dials)
   World / Tile / Plant   the grid model and world generation
-  sim/                   FluidSystem, WeatherSystem, GrowthSystem
-  render/                PixelRenderer, WorldCamera
-  input/                 InputController (tools), CameraController, Hud
-  Terrarium.java         the ApplicationAdapter wiring it together
+  sim/                   Fluid, Weather, Growth, Spring systems
+  wildlife/              WildlifeSystem + critters
+  fx/                    ParticleSystem
+  render/                PixelRenderer, WorldCamera, MiniMap
+  input/                 InputController (tools), CameraController, Hud, DialPanel
+  Terrarium.java         the ApplicationAdapter wiring it all together
 lwjgl3/   Desktop launcher (LWJGL3)
 android/  Android launcher
 ```
@@ -114,5 +120,5 @@ sea level, evaporation, growth rates, rain intensity, zoom limits — lives in
 
 ## Tech
 
-Java 17 · libGDX 1.13.1 · Gradle (wrapper, 8.10.2). No external art assets — the
-landscape and UI are drawn procedurally.
+Java 17 · libGDX 1.14.2 · Gradle (wrapper, 9.6.1). No external art or audio
+assets — the landscape and UI are drawn procedurally.
