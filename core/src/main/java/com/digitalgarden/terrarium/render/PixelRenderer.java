@@ -136,6 +136,12 @@ public class PixelRenderer implements Disposable {
             if (lit) { r = pr; g = pg; b = pb; }
         }
 
+        // --- spring / drain marker (center pixel of the tile) ---
+        if (t.spring != 0 && lx == TS / 2 && ly == TS / 2) {
+            if (t.spring == 1) { r = 0.85f; g = 0.97f; b = 1f; }   // bright welling spring
+            else { r = 0.04f; g = 0.07f; b = 0.16f; }              // dark drain
+        }
+
         // --- weather overlay ---
         // overcast: a subtle global dimming while it storms
         float ambient = 1f - weather.stormLevel() * 0.12f;

@@ -67,6 +67,12 @@ public final class Config {
     /** Brush radius in tiles. */
     public static final int POUR_RADIUS = 4;
 
+    // --- Springs / drains ---
+    /** Water a spring emits per second (feeds rivers/lakes that outlast evaporation). */
+    public static final float SPRING_RATE = 1.6f;
+    /** Water a drain removes per second. */
+    public static final float DRAIN_RATE = 2.0f;
+
     // --- Weather ---
     /** Cloud drift speed (cloud-noise units/second); wind direction wanders on its own. */
     public static final float WIND_SPEED = 0.12f;

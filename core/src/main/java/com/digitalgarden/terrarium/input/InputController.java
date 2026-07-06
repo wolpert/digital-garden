@@ -12,6 +12,7 @@ import com.digitalgarden.terrarium.Tool;
 import com.digitalgarden.terrarium.World;
 import com.digitalgarden.terrarium.render.MiniMap;
 import com.digitalgarden.terrarium.render.WorldCamera;
+import com.digitalgarden.terrarium.sim.SpringSystem;
 
 /**
  * Turns pointer input into tool actions, dispatching on the {@link Hud}'s
@@ -26,6 +27,7 @@ public class InputController {
     private final WorldCamera camera;
     private final MiniMap miniMap;
     private final DialPanel dials;
+    private final SpringSystem springs;
     private final Vector3 tmp = new Vector3();
 
     private boolean wasTouched;
@@ -37,13 +39,14 @@ public class InputController {
     private int carryFromX, carryFromY;
 
     public InputController(World world, Viewport viewport, Hud hud, WorldCamera camera,
-                           MiniMap miniMap, DialPanel dials) {
+                           MiniMap miniMap, DialPanel dials, SpringSystem springs) {
         this.world = world;
         this.viewport = viewport;
         this.hud = hud;
         this.camera = camera;
         this.miniMap = miniMap;
         this.dials = dials;
+        this.springs = springs;
     }
 
     public boolean isCarrying() {
@@ -105,6 +108,12 @@ public class InputController {
                     if (justDown) pickRock(cx, cy);
                     if (justUp) dropRock(cx, cy);
                     break;
+                case SPRING:
+                    if (justDown) springs.toggle(cx, cy, 1);
+                    break;
+                case DRAIN:
+                    if (justDown) springs.toggle(cx, cy, 2);
+                    break;
                 default:
                     break;
             }
@@ -164,6 +173,7 @@ public class InputController {
                 t.rock = true;
                 t.plantType = 0; // a dropped rock crushes any seedling
                 t.growth = 0f;
+                t.spring = 0;    // ...and caps a spring/drain (SpringSystem prunes it)
                 return;
             }
         }

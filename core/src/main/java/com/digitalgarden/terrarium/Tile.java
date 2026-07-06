@@ -15,6 +15,8 @@ public class Tile {
     public float water;
     /** A solid rock the player can move; blocks growth and dams flow. */
     public boolean rock;
+    /** Water source: 0 = none, 1 = spring (emits water), 2 = drain (removes it). */
+    public int spring;
 
     // --- Plant state (used by the growth milestone) ---
     /** 0 = no plant; otherwise a seed-type id. */
