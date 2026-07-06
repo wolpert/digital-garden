@@ -73,6 +73,14 @@ public final class Config {
     /** Water a drain removes per second. */
     public static final float DRAIN_RATE = 2.0f;
 
+    // --- Terrain sculpting ---
+    /** Elevation change per second at the center of the raise/lower brush. */
+    public static final float SCULPT_RATE = 0.5f;
+    /** Sculpt brush radius in tiles. */
+    public static final int SCULPT_RADIUS = 3;
+    /** Strength of elevation shading (high ground lighter, low ground darker). */
+    public static final float ELEVATION_SHADE = 0.35f;
+
     // --- Weather ---
     /** Cloud drift speed (cloud-noise units/second); wind direction wanders on its own. */
     public static final float WIND_SPEED = 0.12f;

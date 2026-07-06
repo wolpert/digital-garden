@@ -96,6 +96,10 @@ public class PixelRenderer implements Disposable {
                 float wet = t.moisture * 0.12f;
                 r -= wet; g -= wet; b -= wet * 0.6f;
             }
+            // elevation shading: high ground lighter, valleys darker (shows relief
+            // and makes sculpting visible)
+            float elev = (t.elevation - Config.SEA_LEVEL) * Config.ELEVATION_SHADE;
+            r += elev; g += elev; b += elev;
         }
 
         // subtle darkening on pixels sitting against a different surface

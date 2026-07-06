@@ -100,9 +100,10 @@ public class Hud implements Disposable {
         boolean overBoard = lx >= 0 && lx < Config.VIEW_W && ly >= 0 && ly < Config.VIEW_H;
         boolean overPanel = lx <= INSET + panelW && ly <= PANEL_TOP;
         if (overBoard && !overPanel) {
-            if (tool == Tool.WATER) {
-                sr.setColor(0.7f, 0.85f, 1f, 0.9f);
-                sr.circle(lx, ly, Config.POUR_RADIUS * Config.TILE_SIZE * cam.zoom());
+            if (tool == Tool.WATER || tool == Tool.RAISE || tool == Tool.LOWER) {
+                int radius = tool == Tool.WATER ? Config.POUR_RADIUS : Config.SCULPT_RADIUS;
+                sr.setColor(tool.swatch.r, tool.swatch.g, tool.swatch.b, 0.95f);
+                sr.circle(lx, ly, radius * Config.TILE_SIZE * cam.zoom());
             } else {
                 drawTileBrush(sr, cam, lx, ly, tool);
             }

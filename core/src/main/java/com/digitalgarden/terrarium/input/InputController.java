@@ -114,6 +114,12 @@ public class InputController {
                 case DRAIN:
                     if (justDown) springs.toggle(cx, cy, 2);
                     break;
+                case RAISE:
+                    if (touched) sculpt(cx, cy, dt, +1f);
+                    break;
+                case LOWER:
+                    if (touched) sculpt(cx, cy, dt, -1f);
+                    break;
                 default:
                     break;
             }
@@ -138,6 +144,21 @@ public class InputController {
                 float dist = (float) Math.sqrt(dx * dx + dy * dy);
                 if (dist > r) continue;
                 t.water += Config.POUR_RATE * (1f - dist / r) * dt;
+            }
+        }
+    }
+
+    private void sculpt(int cx, int cy, float dt, float dir) {
+        int r = Config.SCULPT_RADIUS;
+        for (int dy = -r; dy <= r; dy++) {
+            for (int dx = -r; dx <= r; dx++) {
+                int x = cx + dx, y = cy + dy;
+                if (!world.inBounds(x, y)) continue;
+                float dist = (float) Math.sqrt(dx * dx + dy * dy);
+                if (dist > r) continue;
+                Tile t = world.at(x, y);
+                float e = t.elevation + dir * Config.SCULPT_RATE * (1f - dist / r) * dt;
+                t.elevation = e < 0f ? 0f : (e > 1f ? 1f : e);
             }
         }
     }
