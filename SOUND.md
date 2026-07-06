@@ -2,8 +2,10 @@
 
 Plan for adding **procedurally generated sound** to Terrarium. Written to survive a
 context reset: it captures the decisions, the integration technique, the sound design,
-and — importantly — **how Claude can help validate the sound without being able to hear
-it**. Read `CLAUDE.md` first for the overall architecture; this file is audio-specific.
+and — importantly — **the collaborative loop we use to create each sound together**:
+Claude makes a change and renders it, the user listens, and we adjust until it's right —
+**one sound at a time**. Read `CLAUDE.md` first for the overall architecture; this file is
+audio-specific.
 
 ## Goal / focus
 
@@ -102,60 +104,92 @@ Read live each frame, exactly like the dials read `Settings`:
 - fraction of visible water tiles → water bubbling gain.
 - overall calm (clear + little wind) → more birdsong.
 
-## How to validate the sound (Claude can't hear — this is the workflow)
+## How we build the sounds — together, one at a time
 
-Claude has **no audio playback** in its environment, so quality is validated by a mix of
-**objective analysis Claude runs** + **the human listening**. Design every audio change to
-be renderable **offline and deterministically** so it can be inspected and A/B'd.
+**Core working method: we co-create each sound in a tight Claude↔user loop, and we do it
+for every sound independently.** Pick ONE sound, iterate until the user is happy with it,
+**lock it**, then move to the next. Do **not** batch-build all the voices and tune them
+later — a single voice judged in isolation is far easier to get right, and mixing several
+half-baked sounds muddies the feedback.
 
-**1. Headless render harness.** Add a dev entry point (a `main`, e.g.
-`lwjgl3/.../AudioRenderMain`, or a Gradle task) that renders **deterministic WAV files**
-(fixed RNG seed, JSyn **non-real-time** mode → `WaveRecorder`/`WaveFileWriter`, or render
-`AudioSystem` offline) into `build/audio/`:
-- ambient presets: `calm`, `windy`, `light-rain`, `storm`, `dawn-birds` (each a few seconds).
-- each SFX: `splash`, `thud`, `sprout`, `chirp` (a few pitch/pan variants).
+Claude has **no audio playback** of its own, so the user's ears are the quality gate;
+Claude's job is to make the change, render it, catch objective problems, and translate the
+user's plain-language feedback into parameter changes.
 
-**2. Objective checks Claude runs on each WAV (no ears needed).** Flag problems automatically:
-- **Clipping** — samples at/above ~0.99 (should be none; keep headroom).
-- **Clicks/discontinuities** — max `|sample[i] - sample[i-1]|` above a threshold.
-- **Level** — peak + RMS/loudness in a sane range; not silent, not blasting.
-- **DC offset** — mean near 0.
-- **Spectral sanity** — FFT energy by band: wind/rain weighted low-mid, chirps sweep
-  upward, no harsh high-frequency spikes; storm brighter than calm.
+### The iteration loop (repeat per sound until approved)
 
-**3. Visual check.** Generate **waveform + spectrogram PNGs** (small python/numpy or
-sox/ffmpeg script) that Claude can open and view to confirm envelope shape, gusting,
-chirp sweeps, and absence of clipping — the same screenshot-inspection loop used for the
-visuals.
+1. **Focus one sound.** State which single sound we're working on (e.g. "wind"). Mute /
+   exclude the others so nothing else colors the judgment.
+2. **Claude changes it** — implement or tweak just that voice's JSyn patch + parameters.
+3. **Claude renders it in isolation** to a deterministic WAV in `build/audio/<sound>.wav`
+   (fixed RNG seed, JSyn non-real-time mode), generates a **waveform + spectrogram PNG**,
+   and runs the **objective checks** (below). Auto-fail on clipping/clicks before the user
+   ever listens.
+4. **Claude reports back**, concisely: the WAV path to play, a one-line note on *what
+   changed and why*, the check results, and (if useful) what to listen for.
+5. **User listens** and replies in plain language — "too harsh", "not gusty enough",
+   "clicks at the start", "make it shorter", "brighter in a storm", or "that's it, lock it".
+6. **Claude translates → params** (see symptom→knob table) and re-renders. Go to 3.
+7. On **"approve"**, record the final parameters as the locked settings for that sound and
+   move to the next one. Keep a short changelog per sound so we can A/B and revert.
 
-**4. Human listen + tune (the real quality gate).** The user plays the WAVs (and runs the
-app) and gives qualitative notes; Claude maps notes → DSP parameters and re-renders:
+Only after the individual sounds are each approved do we do a **mix/balance pass** —
+combine them, set relative levels + reverb, wire to live game state, and listen to the
+whole bed together (that pass is its own iteration loop).
 
-| Symptom the user reports | Likely knob to turn |
+### The tooling that supports the loop
+
+- **Render harness** — a dev entry point (a `main`, e.g. `lwjgl3/.../AudioRenderMain`, or a
+  Gradle task) that renders a **single named sound in isolation** to a deterministic WAV
+  (fixed seed → JSyn non-real-time `WaveRecorder`/`WaveFileWriter`). Must be able to render
+  just the sound under focus, not the whole mix. Ambient voices render across a few state
+  values (e.g. wind at low/med/high) so we can hear the reaction; SFX render a few variants.
+- **Objective checks Claude runs on each WAV (no ears needed):**
+  - **Clipping** — any sample ≥ ~0.99 (should be none; keep headroom).
+  - **Clicks/discontinuities** — max `|sample[i] - sample[i-1]|` over a threshold.
+  - **Level** — peak + RMS in a sane range; not silent, not blasting.
+  - **DC offset** — mean near 0.
+  - **Spectral sanity** — FFT energy by band (wind/rain low-mid weighted, chirps sweep up,
+    no harsh highs; storm brighter than calm).
+- **Visual check** — waveform + spectrogram PNGs (small python/numpy or sox/ffmpeg script)
+  that Claude opens and views to confirm envelope shape, gusting, sweeps, no clipping — the
+  same screenshot-inspection loop used for the visuals.
+
+### Symptom → knob (Claude's translation aid for step 6)
+
+| User says | Likely knob to turn |
 |---|---|
 | Harsh / hissy | lower filter cutoff; reduce high-band gain; more low-pass |
-| Too quiet / too loud | voice gain / master gain |
+| Too quiet / too loud | that voice's gain |
 | Clicky / pops | lengthen envelope attack/release; ramp gains; fix buffer seams |
 | Not "gusty" enough | wind LFO rate/depth |
 | Rain not intense in storms | steepen `stormLevel → rain gain` curve; more droplets |
-| Muddy / boomy | high-pass the low end; reduce reverb; trim water/thud lows |
-| Robotic birds | randomize chirp pitch/timing; vary phrase length |
+| Muddy / boomy | high-pass the low end; reduce reverb; trim lows |
+| Robotic / repetitive birds | randomize chirp pitch/timing; vary phrase length |
 
-**5. In-app check.** `./gradlew :lwjgl3:run` to hear it react to real weather; later,
+### In-app check (after a sound is approved)
+
+`./gradlew :lwjgl3:run` to hear the approved sound react to real weather in context; later,
 test on an Android device (AudioTrack latency + audio focus).
 
-## Build order (incremental slices)
+## Build order
 
-1. **Pipeline proof** — add JSyn dep + JitPack repo; `AudioSystem` skeleton + AudioDevice
-   bridge thread + master gain/mute; a single **test tone**. Confirm it plays on **desktop
-   and Android**. Don't build voices until output works on both.
-2. **Render harness + checks** — offline WAV render + the objective checks + waveform/
-   spectrogram PNGs. This is the validation backbone; build it early.
-3. **Ambient bed** — wind → rain → water, tied to `weather`/`settings`. Render presets, run
-   checks, user listens, tune.
-4. **Event SFX** — via the existing emit hooks; pan by screen position.
-5. **Birds + polish** — chirp grammar, light reverb glue; master volume/mute in `Settings`
-   (maybe a dial); Android device pass.
+Two infrastructure slices first, then **one sound at a time**, each taken through the
+iteration loop to approval before the next is started.
+
+1. **Pipeline proof (infra)** — add JSyn dep + JitPack repo; `AudioSystem` skeleton +
+   AudioDevice bridge thread + master gain/mute; a single **test tone**. Confirm it plays
+   on **desktop and Android**. Don't build voices until output works on both.
+2. **Render + validation harness (infra)** — render a *single named sound in isolation* to
+   a deterministic WAV, plus objective checks + waveform/spectrogram PNGs. This is what
+   makes the per-sound loop possible; build it before any real voice.
+3. **Each sound, independently** — implement → render in isolation → **iterate with the
+   user until approved** → lock → next. Suggested order (each its own loop):
+   wind → rain → water → pour splash → rock thud → sprout blip → birds.
+4. **Mix & balance pass** — only once the individual sounds are approved: combine them, set
+   relative levels + reverb, wire to live game state (`weather`/`settings`/water amount),
+   and iterate on the whole bed together.
+5. **Android device pass** — verify on a real device (latency, audio focus, lifecycle).
 
 ## Gotchas / constraints (don't relearn these the hard way)
 
@@ -171,12 +205,13 @@ test on an Android device (AudioTrack latency + audio focus).
 ## Starter prompt (hand this to a fresh Claude)
 
 > Add procedural audio to Terrarium using **JSyn** (Apache-2.0; JitPack
-> `com.github.philburk:jsyn`, add the jitpack repo). Build slice 1 only: an `AudioSystem`
-> in `core/.../audio/` (mirroring `ParticleSystem`) that opens `Gdx.audio.newAudioDevice`
-> on a daemon thread, runs a JSyn synth in pull mode bridged into it, plays a quiet test
-> tone, and has master gain + mute; wire it into `Terrarium` create/update/dispose/pause.
-> Then add the **offline render harness** that writes deterministic WAVs to `build/audio/`
-> plus objective checks (clip/click/level/DC/spectral) and waveform+spectrogram PNGs, so we
-> can validate sound without playback. Confirm it builds and runs on desktop; note the
-> Android steps. See SOUND.md for the full plan, voices, parameter mapping, and the
-> validation loop.
+> `com.github.philburk:jsyn`, add the jitpack repo). Build the two infra slices only for
+> now: (1) an `AudioSystem` in `core/.../audio/` (mirroring `ParticleSystem`) that opens
+> `Gdx.audio.newAudioDevice` on a daemon thread, runs a JSyn synth in pull mode bridged
+> into it, plays a quiet test tone, and has master gain + mute, wired into `Terrarium`
+> create/update/dispose/pause; and (2) an **offline render harness** that renders a single
+> named sound in isolation to a deterministic WAV in `build/audio/`, with objective checks
+> (clip/click/level/DC/spectral) and waveform+spectrogram PNGs. Confirm it builds/runs on
+> desktop; note the Android steps. **Then stop and we build the actual sounds together,
+> one at a time** — starting with wind — using the per-sound iteration loop in SOUND.md
+> (Claude renders it in isolation, I listen, we adjust until I approve, then move on).
