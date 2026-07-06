@@ -25,6 +25,7 @@ The world is rendered at the pixel level — colors *are* the landscape:
 | **Water** | Hold / drag to pour water into a soft radius; it then flows downhill and pools. |
 | **Grass / Tree / Flower seed** | Click or drag to sow seeds on land. |
 | **Move rock** | Press on a rock to pick it up, release to drop it (rocks dam and divert water). |
+| **Spring / Drain** | Click to place a spring (wells up water — a spring on high ground carves a river/lake downhill) or a drain (removes water). Click again to remove. |
 
 **Camera**
 

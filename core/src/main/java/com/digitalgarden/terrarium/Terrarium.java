@@ -18,6 +18,7 @@ import com.digitalgarden.terrarium.render.PixelRenderer;
 import com.digitalgarden.terrarium.render.WorldCamera;
 import com.digitalgarden.terrarium.sim.FluidSystem;
 import com.digitalgarden.terrarium.sim.GrowthSystem;
+import com.digitalgarden.terrarium.sim.SpringSystem;
 import com.digitalgarden.terrarium.sim.WeatherSystem;
 import com.digitalgarden.terrarium.wildlife.WildlifeSystem;
 
@@ -41,6 +42,7 @@ public class Terrarium extends ApplicationAdapter {
     private World world;
     private Settings settings;
     private FluidSystem fluid;
+    private SpringSystem springs;
     private WeatherSystem weather;
     private GrowthSystem growth;
     private WildlifeSystem wildlife;
@@ -62,6 +64,7 @@ public class Terrarium extends ApplicationAdapter {
         world = new World(Config.SEED);
         settings = new Settings();
         fluid = new FluidSystem(world, settings);
+        springs = new SpringSystem(world);
         weather = new WeatherSystem(world, Config.SEED * 13 + 5, settings);
         growth = new GrowthSystem(Config.SEED * 7 + 1, settings);
         wildlife = new WildlifeSystem(world, Config.SEED * 17 + 3);
@@ -71,7 +74,7 @@ public class Terrarium extends ApplicationAdapter {
         dials = new DialPanel(viewport, settings);
         renderer = new PixelRenderer();
         miniMap = new MiniMap();
-        input = new InputController(world, viewport, hud, camera, miniMap, dials);
+        input = new InputController(world, viewport, hud, camera, miniMap, dials, springs);
     }
 
     @Override
@@ -109,7 +112,8 @@ public class Terrarium extends ApplicationAdapter {
         int steps = 0;
         while (simAccumulator >= Config.SIM_TICK && steps < 5) {
             weather.step(world, Config.SIM_TICK); // rain lands...
-            fluid.step(world);                    // ...then flows and pools...
+            springs.apply(Config.SIM_TICK);       // ...springs well up...
+            fluid.step(world);                    // ...then it all flows and pools...
             growth.step(world, Config.SIM_TICK);  // ...then plants & terrain react
             simAccumulator -= Config.SIM_TICK;
             steps++;
