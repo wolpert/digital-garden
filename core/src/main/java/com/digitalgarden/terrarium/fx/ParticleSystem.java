@@ -43,7 +43,7 @@ public class ParticleSystem {
             P p = obtain(Kind.SPLASH, x, y);
             if (p == null) return;
             p.vx = (rng.nextFloat() - 0.5f) * 40f;
-            p.vy = 30f + rng.nextFloat() * 40f;
+            p.vy = -(30f + rng.nextFloat() * 40f); // up (world-y is down)
             p.life = 0.35f + rng.nextFloat() * 0.2f;
             p.size = 1.4f;
             p.r = 0.75f; p.g = 0.88f; p.b = 1f;
@@ -63,7 +63,7 @@ public class ParticleSystem {
             P p = obtain(Kind.DUST, x, y);
             if (p == null) return;
             p.vx = (rng.nextFloat() - 0.5f) * 55f;
-            p.vy = 15f + rng.nextFloat() * 30f;
+            p.vy = -(15f + rng.nextFloat() * 30f); // puff up
             p.life = 0.4f + rng.nextFloat() * 0.3f;
             p.size = 1.6f;
             float t = 0.55f + rng.nextFloat() * 0.15f;
@@ -76,7 +76,7 @@ public class ParticleSystem {
             P p = obtain(Kind.SPROUT, x, y);
             if (p == null) return;
             p.vx = (rng.nextFloat() - 0.5f) * 30f;
-            p.vy = 25f + rng.nextFloat() * 25f;
+            p.vy = -(25f + rng.nextFloat() * 25f); // pop up
             p.life = 0.4f + rng.nextFloat() * 0.2f;
             p.size = 1.4f;
             p.r = 0.5f; p.g = 0.85f; p.b = 0.35f;
@@ -96,7 +96,7 @@ public class ParticleSystem {
             p.x += p.vx * dt;
             p.y += p.vy * dt;
             if (p.kind == Kind.SPLASH || p.kind == Kind.DUST || p.kind == Kind.SPROUT) {
-                p.vy -= 90f * dt; // gravity (world-y is down, so upward is +)
+                p.vy += 90f * dt; // gravity pulls back down (world-y increases downward)
             }
         }
         spawnAmbient(world, weather, cam, dt);
@@ -127,7 +127,7 @@ public class ParticleSystem {
                 P p = obtain(Kind.POLLEN, wx, wy);
                 if (p == null) return;
                 p.vx = (rng.nextFloat() - 0.5f) * 8f;
-                p.vy = 4f + rng.nextFloat() * 6f;
+                p.vy = -(3f + rng.nextFloat() * 5f); // waft gently upward
                 p.life = 2.5f + rng.nextFloat() * 2f;
                 p.size = 1f;
                 p.r = 0.98f; p.g = 0.95f; p.b = 0.55f;
