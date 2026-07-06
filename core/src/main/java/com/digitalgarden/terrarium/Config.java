@@ -117,8 +117,13 @@ public final class Config {
     // --- Audio (procedural sound; see SOUND.md) ---
     /** Output sample rate for the synth and the libGDX audio device. */
     public static final int AUDIO_SAMPLE_RATE = 44100;
-    /** Default master volume. Deliberately low — this is a calm sandbox, not an arcade. */
-    public static final float MASTER_VOLUME = 0.35f;
+    /** Sound is set in discrete levels via the config slider: 0=off, 1=soft, 2=medium,
+     *  3=loud. {@link #SOUND_VOLUMES} is the master gain for each level. */
+    public static final int SOUND_LEVELS = 4;
+    public static final int SOUND_LEVEL_DEFAULT = 3;
+    public static final float[] SOUND_VOLUMES = { 0f, 0.15f, 0.35f, 0.6f };
+    /** Human-readable name per level, for the config UI. */
+    public static final String[] SOUND_LEVEL_NAMES = { "Off", "Soft", "Medium", "Loud" };
     /** How fast the bridge ramps toward a new master gain, per output sample. Small =
      *  slow, click-free change (~30 ms time constant at 44.1 kHz); prevents zipper noise. */
     public static final float AUDIO_GAIN_RAMP = 0.0008f;
