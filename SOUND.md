@@ -237,8 +237,19 @@ default, `AUDIO_GAIN_RAMP`, `TEST_TONE_*`).
 - **Caveat:** if a release build later turns on R8/shrinking, add keep rules for `com.jsyn.**`
   (debug builds don't shrink, so this doesn't affect the assembleDebug verification).
 
-**Next:** stop here and build the actual voices together, one at a time, starting with
-**wind**, via the per-sound iteration loop above.
+## Sound changelog (locked voices)
+
+Per-voice record so we can A/B and revert. Params live in `SoundLibrary`.
+
+- **wind — v1, APPROVED & wired live.** Pink noise → `FilterLowPass`, driven by two slow
+  non-periodic `RedNoise` LFOs (one wanders the cutoff = the whoosh, one swells the gain =
+  gusts). Locked params (`SoundLibrary.WIND_*`): cutoff 550 Hz ±300 @ 0.35 Hz, Q 0.6, gust
+  0.60 ±0.40 @ 0.22 Hz, level 2.0. Isolated render peaks ~0.5–0.7 (stochastic), low/mid
+  weighted, no harsh highs. Live: `AudioSystem` maps the Wind dial (`settings.windSpeed`,
+  baseline `Config.WIND_SPEED`, up to 3×) to a `WindVoice.setIntensity` of 0.35→1.0,
+  glided by a `LinearRamp` so dial moves don't click; intensity 1.0 == the approved render.
+
+**Next:** continue one at a time — **rain** is next per the build order — via the loop above.
 
 ## Gotchas / constraints (don't relearn these the hard way)
 

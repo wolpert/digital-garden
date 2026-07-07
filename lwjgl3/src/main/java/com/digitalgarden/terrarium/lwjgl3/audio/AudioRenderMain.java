@@ -9,6 +9,7 @@ import com.jsyn.ports.UnitOutputPort;
 import com.jsyn.util.WaveRecorder;
 import com.digitalgarden.terrarium.Config;
 import com.digitalgarden.terrarium.audio.SoundLibrary;
+import java.util.Map;
 
 /**
  * Offline audio render + validation harness — <b>Slice 2 infra</b> from SOUND.md. Renders a
@@ -30,8 +31,15 @@ import com.digitalgarden.terrarium.audio.SoundLibrary;
  * can gate a build.
  */
 public final class AudioRenderMain {
-    /** Seconds of audio to render per sound. */
-    private static final double DURATION = 2.0;
+    /** Default seconds of audio to render. */
+    private static final double DEFAULT_DURATION = 2.0;
+    /** Per-sound overrides — slow ambient beds need longer to hear their movement. */
+    private static final Map<String, Double> DURATIONS = Map.of(
+            SoundLibrary.WIND, 8.0);
+
+    private static double durationFor(String name) {
+        return DURATIONS.getOrDefault(name, DEFAULT_DURATION);
+    }
 
     public static void main(String[] args) throws Exception {
         String[] sounds = args.length > 0 ? args : SoundLibrary.ALL;
@@ -93,7 +101,7 @@ public final class AudioRenderMain {
                 AudioDeviceManager.USE_DEFAULT_DEVICE, 0,
                 AudioDeviceManager.USE_DEFAULT_DEVICE, 0);
         recorder.start();
-        synth.sleepFor(DURATION);
+        synth.sleepFor(durationFor(name));
         recorder.stop();
         synth.stop();
         recorder.close();
