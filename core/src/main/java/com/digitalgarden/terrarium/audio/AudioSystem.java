@@ -9,6 +9,7 @@ import com.jsyn.devices.AudioDeviceManager;
 import com.jsyn.unitgen.LineOut;
 import com.digitalgarden.terrarium.Config;
 import com.digitalgarden.terrarium.Settings;
+import com.digitalgarden.terrarium.sim.WeatherSystem;
 
 /**
  * The game's procedural audio engine. Mirrors {@link com.digitalgarden.terrarium.fx.ParticleSystem}
@@ -17,11 +18,10 @@ import com.digitalgarden.terrarium.Settings;
  * single libGDX {@link AudioDevice} (see {@link GdxAudioDeviceManager}) for a unified
  * desktop+Android output path with one master gain and mute.
  *
- * <p>This is the <b>Slice 1 infra</b> from SOUND.md: skeleton + output bridge + master
- * gain/mute + a quiet test tone to prove sound reaches the speakers on both platforms.
- * The actual voices (wind, rain, …) come later, built one at a time; when they exist,
- * {@link #update(float)} will push their live target parameters to the audio thread and
- * event hooks will fire one-shot SFX. For now those are intentionally stubs.
+ * <p>Voices are built one at a time (SOUND.md) and summed here. Currently the wind and
+ * rain ambient beds play, each with a game-controllable intensity that {@link #update}
+ * maps from live state (the Wind dial, the storm level). More voices and one-shot SFX
+ * get added as they're approved.
  *
  * <p>Threading: the render thread only ever writes {@link Settings} and calls the lifecycle
  * methods here; all synthesis and the blocking {@code writeSamples} happen on JSyn's engine
@@ -33,7 +33,8 @@ public final class AudioSystem {
     private AudioDevice device;
     private Synthesizer synth;
     private LineOut lineOut;
-    private SoundLibrary.WindVoice wind;
+    private SoundLibrary.AmbientVoice wind;
+    private SoundLibrary.AmbientVoice rain;
     private boolean available;
 
     public AudioSystem(Settings settings) {
@@ -47,15 +48,19 @@ public final class AudioSystem {
             lineOut = new LineOut();
             synth.add(lineOut);
 
-            // Build the wind bed and fan its mono output to both channels.
+            // Build the ambient voices and sum each into both channels (JSyn adds signals
+            // connected to the same port). Master gain + soft-clip live in the bridge.
             wind = SoundLibrary.buildWind(synth);
-            wind.output.connect(0, lineOut.input, 0);
-            wind.output.connect(0, lineOut.input, 1);
+            rain = SoundLibrary.buildRain(synth);
+            for (SoundLibrary.AmbientVoice v : new SoundLibrary.AmbientVoice[] { wind, rain }) {
+                v.output.connect(0, lineOut.input, 0);
+                v.output.connect(0, lineOut.input, 1);
+            }
 
             available = true;
             startEngine();
             Gdx.app.log("AudioSystem", "audio online: " + Config.AUDIO_SAMPLE_RATE
-                    + " Hz stereo, wind bed (M to mute)");
+                    + " Hz stereo, wind + rain (M to mute)");
         } catch (Throwable t) {
             // No audio device, unsupported platform, etc. — run silently rather than crash.
             available = false;
@@ -74,16 +79,17 @@ public final class AudioSystem {
     }
 
     /**
-     * Per-frame update from the render thread. Once ambient voices exist this will map live
-     * game state (weather, wind, visible water) to their target parameters — the audio
-     * thread ramps toward whatever we set here. Nothing to drive yet with only a test tone.
+     * Per-frame update from the render thread: map live game state to each voice's target
+     * intensity. The audio thread ramps toward whatever we set here (click-free).
      */
-    public void update(float dt) {
-        if (wind == null) return;
-        // Map the Wind dial (settings.windSpeed, baseline Config.WIND_SPEED, up to 3x) to
-        // the wind bed's intensity: a faint breeze when calm, full when the dial is maxed.
-        float norm = MathUtils.clamp(settings.windSpeed / (Config.WIND_SPEED * 3f), 0f, 1f);
-        wind.setIntensity(0.35 + 0.65 * norm);
+    public void update(WeatherSystem weather, float dt) {
+        if (!available) return;
+        // Wind: the Wind dial (settings.windSpeed, baseline Config.WIND_SPEED, up to 3x) —
+        // a faint breeze when calm, full when the dial is maxed.
+        float windNorm = MathUtils.clamp(settings.windSpeed / (Config.WIND_SPEED * 3f), 0f, 1f);
+        wind.setIntensity(0.35 + 0.65 * windNorm);
+        // Rain: the current storm level (0 = clear → silent, 1 = full storm → full rain).
+        rain.setIntensity(MathUtils.clamp(weather.stormLevel(), 0f, 1f));
     }
 
     /** Level to restore to when unmuting from the M key (if the slider is at Off). */
