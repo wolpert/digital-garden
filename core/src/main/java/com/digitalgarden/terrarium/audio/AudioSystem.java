@@ -2,10 +2,10 @@ package com.digitalgarden.terrarium.audio;
 
 import com.badlogic.gdx.Gdx;
 import com.badlogic.gdx.audio.AudioDevice;
+import com.badlogic.gdx.math.MathUtils;
 import com.jsyn.JSyn;
 import com.jsyn.Synthesizer;
 import com.jsyn.devices.AudioDeviceManager;
-import com.jsyn.ports.UnitOutputPort;
 import com.jsyn.unitgen.LineOut;
 import com.digitalgarden.terrarium.Config;
 import com.digitalgarden.terrarium.Settings;
@@ -33,6 +33,7 @@ public final class AudioSystem {
     private AudioDevice device;
     private Synthesizer synth;
     private LineOut lineOut;
+    private SoundLibrary.WindVoice wind;
     private boolean available;
 
     public AudioSystem(Settings settings) {
@@ -46,15 +47,15 @@ public final class AudioSystem {
             lineOut = new LineOut();
             synth.add(lineOut);
 
-            // Build the (only, for now) voice and fan its mono output to both channels.
-            UnitOutputPort voice = SoundLibrary.build(synth, SoundLibrary.TEST_TONE, Config.SEED);
-            voice.connect(0, lineOut.input, 0);
-            voice.connect(0, lineOut.input, 1);
+            // Build the wind bed and fan its mono output to both channels.
+            wind = SoundLibrary.buildWind(synth);
+            wind.output.connect(0, lineOut.input, 0);
+            wind.output.connect(0, lineOut.input, 1);
 
             available = true;
             startEngine();
             Gdx.app.log("AudioSystem", "audio online: " + Config.AUDIO_SAMPLE_RATE
-                    + " Hz stereo, playing test tone (M to mute)");
+                    + " Hz stereo, wind bed (M to mute)");
         } catch (Throwable t) {
             // No audio device, unsupported platform, etc. — run silently rather than crash.
             available = false;
@@ -78,7 +79,11 @@ public final class AudioSystem {
      * thread ramps toward whatever we set here. Nothing to drive yet with only a test tone.
      */
     public void update(float dt) {
-        // Reserved for ambient parameter mapping; see SOUND.md "Parameter mapping".
+        if (wind == null) return;
+        // Map the Wind dial (settings.windSpeed, baseline Config.WIND_SPEED, up to 3x) to
+        // the wind bed's intensity: a faint breeze when calm, full when the dial is maxed.
+        float norm = MathUtils.clamp(settings.windSpeed / (Config.WIND_SPEED * 3f), 0f, 1f);
+        wind.setIntensity(0.35 + 0.65 * norm);
     }
 
     /** Level to restore to when unmuting from the M key (if the slider is at Off). */
