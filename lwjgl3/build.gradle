@@ -32,3 +32,13 @@ tasks.register('renderAudio', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.digitalgarden.terrarium.lwjgl3.audio.AudioRenderMain'
 }
+
+// Analyze arbitrary WAVs (e.g. a reference recording vs our render) on the same yardstick.
+//   ./gradlew :lwjgl3:analyzeAudio --args="a.wav b.wav"
+tasks.register('analyzeAudio', JavaExec) {
+    group = 'audio'
+    description = 'Measure WAV files (checks + octave bands + PNGs) to match a target.'
+    workingDir = rootProject.projectDir
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.digitalgarden.terrarium.lwjgl3.audio.AudioAnalyzeMain'
+}

@@ -36,7 +36,10 @@ public final class AudioRenderMain {
     /** Per-sound overrides — slow ambient beds need longer to hear their movement. */
     private static final Map<String, Double> DURATIONS = Map.of(
             SoundLibrary.WIND, 8.0,
-            SoundLibrary.RAIN, 6.0);
+            SoundLibrary.RAIN, 6.0,
+            SoundLibrary.WATER, 6.0,
+            SoundLibrary.WATER_FLOW, 6.0,
+            SoundLibrary.WATER_BUBBLE, 6.0);
 
     private static double durationFor(String name) {
         return DURATIONS.getOrDefault(name, DEFAULT_DURATION);

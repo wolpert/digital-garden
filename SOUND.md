@@ -261,7 +261,35 @@ Per-voice record so we can A/B and revert. Params live in `SoundLibrary`.
   maps `weather.stormLevel()` (0 clear → silent, 1 → full) to the rain voice's intensity.
   Marked "good for now — revisit later if needed."
 
-**Next:** continue one at a time — **water** is next per the build order — via the loop above.
+- **water — SHELVED (unsolved), on branch `add-water-voice`.** ~15 iterations across 5+
+  architectures never produced a convincing *forest river*. What we learned, so the next
+  attempt doesn't repeat it:
+  - **The FLOW body works.** A continuous bright band-limited pink-noise rush, amplitude-
+    modulated by a high floor + gentle *smoothed* swells, reference-matched on spectrum
+    (centroid ~5 kHz, ~0% below 250 Hz) — the user approved this as "better." Kept as the
+    `water-flow` channel (`SoundLibrary.buildWaterFlow`).
+  - **The BUBBLE detail is the wall.** Every attempt to add lively bubbling/splashes fell
+    into one of two failure modes, and there was no audible sweet spot in between (judged by
+    the user; the model has no ears):
+      - *tonal* (pure sine up-chirp "bloop", clean resonant ping) → **"sci-fi robot"**
+      - *noisy* (sharp / varied / noise-burst-excited resonator bursts, dense or sparse) → **"static"**
+    Real water bubbling is an organic in-between (Minnaert bubble physics: a decaying sine
+    with an exponentially *rising* pitch, radius-randomized), which blind parameter-tuning
+    couldn't hit.
+  - **Reference-matching tooling exists** (built for this, kept on the branch): download a
+    reference with `yt-dlp`, then `./gradlew :lwjgl3:analyzeAudio --args="ref.wav mine.wav"`
+    (`AudioAnalyzeMain`) prints octave-band spectrum, spectral centroid, crest factor, and
+    PNGs — so a sound can be tuned to a *measured* target, not a mental model. This got the
+    flow's spectrum right; it can't fix a timbre the ear rejects.
+  - **Channel architecture** is in place: `water` = `water-flow` + `water-bubble`, each
+    renderable in isolation (`SoundLibrary.WATER_FLOW` / `WATER_BUBBLE`). Water is NOT wired
+    into the live `AudioSystem` (it never shipped).
+  - **To revisit:** either implement a real physical bubble model, or drop a short *recorded*
+    bubble sample into the `water-bubble` channel (the architecture already supports it) — not
+    more blind noise/resonator tuning. Ship flow-only if a quick ambient is wanted.
+
+**Next:** water is shelved (above). Continue with the **event SFX** — pour splash → rock
+thud → sprout blip — then **birds**, via the per-sound loop.
 
 ## Gotchas / constraints (don't relearn these the hard way)
 

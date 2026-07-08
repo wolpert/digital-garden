@@ -1,10 +1,12 @@
 package com.digitalgarden.terrarium.audio;
 
 import com.jsyn.Synthesizer;
+import com.jsyn.ports.UnitInputPort;
 import com.jsyn.ports.UnitOutputPort;
 import com.jsyn.unitgen.Add;
 import com.jsyn.unitgen.FilterHighPass;
 import com.jsyn.unitgen.FilterLowPass;
+import com.jsyn.unitgen.FilterOnePole;
 import com.jsyn.unitgen.FilterStateVariable;
 import com.jsyn.unitgen.LinearRamp;
 import com.jsyn.unitgen.Maximum;
@@ -41,9 +43,14 @@ public final class SoundLibrary {
     public static final String WIND = "wind";
     /** Ambient rain bed: band-limited bright noise, steadier than wind. */
     public static final String RAIN = "rain";
+    /** Ambient water: a smooth flow channel + a bubbling channel, mixed. */
+    public static final String WATER = "water";
+    /** Water sub-channels, renderable in isolation for tuning (not in {@link #ALL}). */
+    public static final String WATER_FLOW = "water-flow";
+    public static final String WATER_BUBBLE = "water-bubble";
 
     /** Every sound name the harness/UI can ask for, in build order. */
-    public static final String[] ALL = { TEST_TONE, WIND, RAIN };
+    public static final String[] ALL = { TEST_TONE, WIND, RAIN, WATER };
 
     /**
      * Builds the named voice into {@code synth} and returns its output port.
@@ -65,6 +72,12 @@ public final class SoundLibrary {
                 return buildWind(synth).output;
             case RAIN:
                 return buildRain(synth).output;
+            case WATER:
+                return buildWater(synth).output;
+            case WATER_FLOW:
+                return buildWaterFlow(synth);
+            case WATER_BUBBLE:
+                return buildWaterBubble(synth);
             default:
                 throw new IllegalArgumentException("Unknown sound: " + name);
         }
@@ -265,5 +278,178 @@ public final class SoundLibrary {
         mix.output.connect(level.inputA);
         level.inputB.set(RAIN_LEVEL);
         return wrapIntensity(synth, level.output);
+    }
+
+    // --- water: FLOW channel + BUBBLE channel, mixed -------------------------
+    // Water is two independent channels, each renderable in isolation for tuning
+    // ("water-flow" / "water-bubble") and summed by buildWater with its own level.
+    //
+    // FLOW (the smooth body, approved as "better"): reference-matched forest river — a
+    // continuous, bright, band-limited noise rush amplitude-modulated by (a high floor + a
+    // few gentle SMOOTHED swells). Matches the reference spectrum (centroid ~5 kHz, ~0% below
+    // 250 Hz). Rejected flow dead-ends (don't repeat — see SOUND.md): sine-chirp drops ->
+    // robot; resonant/continuous noise bloops -> wind/tent; sharp/varied noise-burst splashes
+    // -> static.
+    private static final double WATER_HP        = 300;   // cut lows to ~0% (kills the wind rumble)
+    private static final double WATER_LP        = 8000;  // bright, but not sizzly/static up top
+    private static final double WATER_FLOOR     = 0.45;  // the continuous smooth flow (a real bed)
+    private static final double SPLASH_SPIKE_GAIN = 3000; // gain before the unit-impulse clamp
+    private static final double SPLASH_ATTACK_POLE = 0.9985; // ~8 ms swell (not a sharp click)
+    private static final double FLOW_CHANNEL_LEVEL = 0.7;
+    private static final double[][] SPLASH_TRAINS = {
+        { 0.9990, 0.9990 }, { 0.9992, 0.9992 }, { 0.9988, 0.9993 },
+    };
+
+    // BUBBLE channel (v1): sparse, pitch-varied "bloops". Each = a resonator excited by a short
+    // NOISE burst (organic body, so not a pure-sine robot) whose pitch chirps UP as it rings
+    // (the drop-into-a-pool signature), low-passed to stay round. Judged ALONE via "water-bubble".
+    private static final double BUB_THRESHOLD   = 0.9990; // trigger rate (higher = sparser)
+    private static final double BUB_SPIKE_GAIN  = 3000;
+    private static final double BUB_BURST_DECAY = 0.985;  // ~1 ms noise burst that excites the ring
+    private static final double BUB_RING_RES    = 0.90;   // resonance of the bloop (ring length)
+    private static final double BUB_CHIRP_DECAY = 0.9990; // how fast the pitch-rise settles (~45 ms)
+    private static final double BUB_TOP         = 1100;   // top pitch of the up-chirp (Hz)
+    private static final double BUB_CHIRP       = 400;    // rise depth (< TOP-SWING so freq stays +)
+    private static final double BUB_TOP_SWING   = 300;    // ± per-bloop pitch variation (800..1400)
+    private static final double BUB_TOP_RATE    = 6;      // pitch-variation LFO (Hz)
+    private static final double BUB_LP          = 3500;   // round off the top
+    private static final double BUBBLE_CHANNEL_LEVEL = 0.8;
+
+    /** The full water voice: flow + bubble channels, summed. */
+    public static AmbientVoice buildWater(Synthesizer synth) {
+        UnitOutputPort flow = buildWaterFlow(synth);
+        UnitOutputPort bubble = buildWaterBubble(synth);
+        Multiply mix = new Multiply();
+        synth.add(mix);
+        flow.connect(mix.inputA);
+        bubble.connect(mix.inputA); // sums with the flow at one input port
+        mix.inputB.set(1.0);
+        return wrapIntensity(synth, mix.output);
+    }
+
+    /** FLOW channel: the smooth, bright, flowing river body. */
+    public static UnitOutputPort buildWaterFlow(Synthesizer synth) {
+        PinkNoise noise = new PinkNoise();
+        FilterHighPass hp = new FilterHighPass();
+        FilterLowPass lp = new FilterLowPass();
+        synth.add(noise); synth.add(hp); synth.add(lp);
+        noise.amplitude.set(1.0);
+        hp.frequency.set(WATER_HP); hp.Q.set(0.7);
+        lp.frequency.set(WATER_LP); lp.Q.set(0.7);
+        noise.output.connect(hp.input);
+        hp.output.connect(lp.input);
+
+        Add envFloor = new Add();
+        Minimum envClamp = new Minimum();
+        synth.add(envFloor); synth.add(envClamp);
+        for (double[] t : SPLASH_TRAINS) {
+            splashTrain(synth, envFloor.inputA, t[0], t[1]);
+        }
+        envFloor.inputB.set(WATER_FLOOR);
+        envClamp.inputB.set(1.0);
+        envFloor.output.connect(envClamp.inputA);
+
+        Multiply splash = new Multiply();
+        Multiply level = new Multiply();
+        synth.add(splash); synth.add(level);
+        lp.output.connect(splash.inputA);
+        envClamp.output.connect(splash.inputB);
+        splash.output.connect(level.inputA);
+        level.inputB.set(FLOW_CHANNEL_LEVEL);
+        return level.output;
+    }
+
+    /** BUBBLE channel: sparse, pitch-varied bloops — a noise-burst-excited resonator whose
+     *  pitch chirps up as it rings. */
+    public static UnitOutputPort buildWaterBubble(Synthesizer synth) {
+        // sparse random unit-impulse triggers ("dust")
+        WhiteNoise trig = new WhiteNoise();
+        Add sub = new Add();
+        Maximum rect = new Maximum();
+        Multiply spike = new Multiply();
+        Minimum clamp = new Minimum();
+        synth.add(trig); synth.add(sub); synth.add(rect); synth.add(spike); synth.add(clamp);
+        trig.amplitude.set(1.0);
+        sub.inputB.set(-BUB_THRESHOLD);
+        trig.output.connect(sub.inputA);
+        rect.inputB.set(0.0);
+        sub.output.connect(rect.inputA);
+        spike.inputB.set(BUB_SPIKE_GAIN);
+        rect.output.connect(spike.inputA);
+        clamp.inputB.set(1.0);
+        spike.output.connect(clamp.inputA);
+
+        // a short noise burst per trigger = the organic excitation for each bloop
+        WhiteNoise burstN = new WhiteNoise();
+        FilterOnePole burstEnv = new FilterOnePole();
+        Multiply burst = new Multiply();
+        synth.add(burstN); synth.add(burstEnv); synth.add(burst);
+        burstN.amplitude.set(1.0);
+        burstEnv.a0.set(1.0); burstEnv.b1.set(-BUB_BURST_DECAY);
+        clamp.output.connect(burstEnv.input);
+        burstN.output.connect(burst.inputA);
+        burstEnv.output.connect(burst.inputB);
+
+        // chirp envelope drives the rising pitch of the ring (clamped <=1 so freq stays positive)
+        FilterOnePole chirpEnv = new FilterOnePole();
+        Minimum chirpClamp = new Minimum();
+        synth.add(chirpEnv); synth.add(chirpClamp);
+        chirpEnv.a0.set(1.0); chirpEnv.b1.set(-BUB_CHIRP_DECAY);
+        clamp.output.connect(chirpEnv.input);
+        chirpClamp.inputB.set(1.0);
+        chirpEnv.output.connect(chirpClamp.inputA);
+
+        // per-bloop top pitch varies; freq = top - chirp*chirpEnv (low at onset -> rises to top)
+        RedNoise topLfo = new RedNoise();
+        MultiplyAdd topVar = new MultiplyAdd();
+        MultiplyAdd freqMod = new MultiplyAdd();
+        FilterStateVariable ring = new FilterStateVariable();
+        FilterLowPass blipLp = new FilterLowPass();
+        Multiply level = new Multiply();
+        synth.add(topLfo); synth.add(topVar); synth.add(freqMod);
+        synth.add(ring); synth.add(blipLp); synth.add(level);
+        topLfo.frequency.set(BUB_TOP_RATE); topLfo.amplitude.set(1.0);
+        topVar.inputB.set(BUB_TOP_SWING); topVar.inputC.set(BUB_TOP);
+        topLfo.output.connect(topVar.inputA);
+        freqMod.inputB.set(-BUB_CHIRP);
+        chirpClamp.output.connect(freqMod.inputA);
+        topVar.output.connect(freqMod.inputC);
+        freqMod.output.connect(ring.frequency);
+        ring.resonance.set(BUB_RING_RES); ring.amplitude.set(1.0);
+        burst.output.connect(ring.input); // excite the resonance with the noise burst
+        ring.bandPass.connect(blipLp.input);
+        blipLp.frequency.set(BUB_LP); blipLp.Q.set(0.7);
+        blipLp.output.connect(level.inputA);
+        level.inputB.set(BUBBLE_CHANNEL_LEVEL);
+        return level.output;
+    }
+
+    /** One train of gentle random swells (flow channel): unit-impulse "dust" -> a one-pole
+     *  decay, with a slow low-pass onset so it swells (not clicks). Sums into {@code dest}. */
+    private static void splashTrain(Synthesizer synth, UnitInputPort dest,
+                                    double threshold, double decay) {
+        WhiteNoise trig = new WhiteNoise();
+        Add sub = new Add();
+        Maximum rect = new Maximum();
+        Multiply spike = new Multiply();
+        Minimum clamp = new Minimum();
+        FilterOnePole env = new FilterOnePole();   // exponential decay
+        FilterOnePole swell = new FilterOnePole();  // smooth the onset into a swell (no click)
+        synth.add(trig); synth.add(sub); synth.add(rect); synth.add(spike); synth.add(clamp);
+        synth.add(env); synth.add(swell);
+        trig.amplitude.set(1.0);
+        sub.inputB.set(-threshold);
+        trig.output.connect(sub.inputA);
+        rect.inputB.set(0.0);
+        sub.output.connect(rect.inputA);
+        spike.inputB.set(SPLASH_SPIKE_GAIN);
+        rect.output.connect(spike.inputA);
+        clamp.inputB.set(1.0);
+        spike.output.connect(clamp.inputA);
+        env.a0.set(1.0); env.b1.set(-decay); // negative b1 => smooth exponential decay
+        clamp.output.connect(env.input);
+        swell.a0.set(1.0 - SPLASH_ATTACK_POLE); swell.b1.set(-SPLASH_ATTACK_POLE);
+        env.output.connect(swell.input);
+        swell.output.connect(dest);
     }
 }
