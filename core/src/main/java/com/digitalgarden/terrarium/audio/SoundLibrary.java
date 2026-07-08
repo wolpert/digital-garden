@@ -5,7 +5,9 @@ import com.jsyn.ports.UnitOutputPort;
 import com.jsyn.unitgen.Add;
 import com.jsyn.unitgen.FilterHighPass;
 import com.jsyn.unitgen.FilterLowPass;
+import com.jsyn.unitgen.FilterOnePole;
 import com.jsyn.unitgen.FilterStateVariable;
+import com.jsyn.unitgen.ImpulseOscillator;
 import com.jsyn.unitgen.LinearRamp;
 import com.jsyn.unitgen.Maximum;
 import com.jsyn.unitgen.Minimum;
@@ -41,6 +43,8 @@ public final class SoundLibrary {
     public static final String WIND = "wind";
     /** Ambient rain bed: band-limited bright noise, steadier than wind. */
     public static final String RAIN = "rain";
+    /** Event SFX: a short filtered-noise splash when water is poured. */
+    public static final String SPLASH = "splash";
 
     /** Every sound name the harness/UI can ask for, in build order. */
     public static final String[] ALL = { TEST_TONE, WIND, RAIN };
@@ -65,6 +69,8 @@ public final class SoundLibrary {
                 return buildWind(synth).output;
             case RAIN:
                 return buildRain(synth).output;
+            case SPLASH:
+                return buildSplash(synth);
             default:
                 throw new IllegalArgumentException("Unknown sound: " + name);
         }
@@ -265,5 +271,110 @@ public final class SoundLibrary {
         mix.output.connect(level.inputA);
         level.inputB.set(RAIN_LEVEL);
         return wrapIntensity(synth, level.output);
+    }
+
+    // --- pour splash (v1) ----------------------------------------------------
+    // A short "pshh": a band-passed white-noise burst, bright at the impact then dulling, with
+    // a quick decay. It's an event one-shot; for the isolation render it self-triggers on a
+    // slow ImpulseOscillator so we hear several. The live game will fire the same patch from
+    // pour events instead (that trigger wiring comes after the timbre is approved).
+    // Reference-matched (a real splash SFX, see SOUND.md): each splash is a sharp broadband
+    // IMPACT + a ~0.6 s decaying FIZZ tail (the water settling — droplets/bubbles). Broadband,
+    // NOT tonal (a pitched bloop reads as percussion). The long fizzy tail is what says "water".
+    private static final double SPLASH_DEMO_RATE  = 1.2;    // demo: splashes/sec (live uses events)
+    private static final double IMPACT_DECAY      = 0.9996; // ~55 ms bright hit (applied as -b1)
+    private static final double IMPACT_ATTACK     = 0.90;   // ~2 ms onset — sharp but not a click
+    private static final double IMPACT_HP         = 700;    // impact band...
+    private static final double IMPACT_LP         = 5000;   // ...tamed on top (not sizzly)
+    private static final double IMPACT_LEVEL      = 0.7;
+    private static final double TAIL_DECAY        = 0.99996; // ~560 ms settling tail
+    private static final double TAIL_HP           = 400;    // tail band
+    private static final double TAIL_LP           = 4500;
+    private static final double FIZZ_RATE         = 35;     // fast wobble = the fizz/bubbling
+    private static final double FIZZ_BASE         = 0.55;   // mean fizz gain
+    private static final double FIZZ_SWING        = 0.45;   // ± fizz depth (0.10..1.00)
+    private static final double TAIL_LEVEL        = 0.6;
+    private static final double SPLASH_LEVEL      = 3.0;    // overall output scale
+
+    /** Builds a pour splash driven by a slow periodic trigger (for isolation rendering). */
+    public static UnitOutputPort buildSplash(Synthesizer synth) {
+        ImpulseOscillator trig = new ImpulseOscillator(); // DEMO trigger; live uses pour events
+        synth.add(trig);
+        trig.frequency.set(SPLASH_DEMO_RATE);
+        trig.amplitude.set(1.0);
+        return splashVoice(synth, trig.output);
+    }
+
+    /** The splash patch itself, gated by a {@code trigger} impulse (reused live + in the demo). */
+    private static UnitOutputPort splashVoice(Synthesizer synth, UnitOutputPort trigger) {
+        // --- impact envelope (fast, soft-onset) and tail envelope (slow settle) ---
+        FilterOnePole impactEnv = new FilterOnePole();
+        FilterOnePole impactAtk = new FilterOnePole();
+        Minimum impactClamp = new Minimum();
+        FilterOnePole tailEnv = new FilterOnePole();
+        Minimum tailClamp = new Minimum();
+        synth.add(impactEnv); synth.add(impactAtk); synth.add(impactClamp);
+        synth.add(tailEnv); synth.add(tailClamp);
+        impactEnv.a0.set(1.0); impactEnv.b1.set(-IMPACT_DECAY);
+        trigger.connect(impactEnv.input);
+        impactAtk.a0.set(1.0 - IMPACT_ATTACK); impactAtk.b1.set(-IMPACT_ATTACK);
+        impactEnv.output.connect(impactAtk.input);
+        impactClamp.inputB.set(1.0);
+        impactAtk.output.connect(impactClamp.inputA);
+        tailEnv.a0.set(1.0); tailEnv.b1.set(-TAIL_DECAY);
+        trigger.connect(tailEnv.input);
+        tailClamp.inputB.set(1.0);
+        tailEnv.output.connect(tailClamp.inputA);
+
+        // --- IMPACT: a broadband burst (pink noise = flatter/less sizzly than white) ---
+        PinkNoise impactN = new PinkNoise();
+        FilterHighPass impactHp = new FilterHighPass();
+        FilterLowPass impactLp = new FilterLowPass();
+        Multiply impact = new Multiply();
+        Multiply impactGain = new Multiply();
+        synth.add(impactN); synth.add(impactHp); synth.add(impactLp); synth.add(impact); synth.add(impactGain);
+        impactN.amplitude.set(1.0);
+        impactHp.frequency.set(IMPACT_HP); impactHp.Q.set(0.7);
+        impactLp.frequency.set(IMPACT_LP); impactLp.Q.set(0.7);
+        impactN.output.connect(impactHp.input);
+        impactHp.output.connect(impactLp.input);
+        impactLp.output.connect(impact.inputA);
+        impactClamp.output.connect(impact.inputB);
+        impact.output.connect(impactGain.inputA);
+        impactGain.inputB.set(IMPACT_LEVEL);
+
+        // --- TAIL: band-limited noise, fast fizz modulation, slow decay = water settling ---
+        PinkNoise tailN = new PinkNoise();
+        FilterHighPass tailHp = new FilterHighPass();
+        FilterLowPass tailLp = new FilterLowPass();
+        RedNoise fizzLfo = new RedNoise();
+        MultiplyAdd fizzMod = new MultiplyAdd(); // fizz gain = swing*lfo + base
+        Multiply fizzed = new Multiply();
+        Multiply tail = new Multiply();
+        Multiply tailGain = new Multiply();
+        synth.add(tailN); synth.add(tailHp); synth.add(tailLp);
+        synth.add(fizzLfo); synth.add(fizzMod); synth.add(fizzed); synth.add(tail); synth.add(tailGain);
+        tailN.amplitude.set(1.0);
+        tailHp.frequency.set(TAIL_HP); tailHp.Q.set(0.7);
+        tailLp.frequency.set(TAIL_LP); tailLp.Q.set(0.7);
+        tailN.output.connect(tailHp.input);
+        tailHp.output.connect(tailLp.input);
+        fizzLfo.frequency.set(FIZZ_RATE); fizzLfo.amplitude.set(1.0);
+        fizzMod.inputB.set(FIZZ_SWING); fizzMod.inputC.set(FIZZ_BASE);
+        fizzLfo.output.connect(fizzMod.inputA);
+        tailLp.output.connect(fizzed.inputA);
+        fizzMod.output.connect(fizzed.inputB);
+        fizzed.output.connect(tail.inputA);
+        tailClamp.output.connect(tail.inputB);
+        tail.output.connect(tailGain.inputA);
+        tailGain.inputB.set(TAIL_LEVEL);
+
+        // --- mix impact + tail, overall level ---
+        Multiply level = new Multiply();
+        synth.add(level);
+        impactGain.output.connect(level.inputA);
+        tailGain.output.connect(level.inputA); // sums with the impact
+        level.inputB.set(SPLASH_LEVEL);
+        return level.output;
     }
 }

@@ -32,3 +32,11 @@ tasks.register('renderAudio', JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'com.digitalgarden.terrarium.lwjgl3.audio.AudioRenderMain'
 }
+
+tasks.register('analyzeAudio', JavaExec) {
+    group = 'audio'
+    description = 'Measure WAV files (checks + octave bands + PNGs) to match a target.'
+    workingDir = rootProject.projectDir
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.digitalgarden.terrarium.lwjgl3.audio.AudioAnalyzeMain'
+}
