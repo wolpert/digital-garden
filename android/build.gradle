@@ -1,7 +1,7 @@
 // Android module. Requires the Android SDK; the path is in local.properties.
 // See android/README.md.
 plugins {
-    id 'com.android.application' version '9.2.1'
+    id 'com.android.application' version '9.3.0'
 }
 
 android {
