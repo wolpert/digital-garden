@@ -135,7 +135,7 @@ public class Terrarium extends ApplicationAdapter {
         }
         wildlife.update(dt); // continuous entities, smooth per-frame motion
         particles.update(world, weather, camera, dt);
-        audio.update(dt);    // maps live state to ambient audio params (voices come later)
+        audio.update(weather, dt); // maps live state (wind dial, storm level) to ambient audio
     }
 
     @Override

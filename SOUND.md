@@ -249,7 +249,19 @@ Per-voice record so we can A/B and revert. Params live in `SoundLibrary`.
   baseline `Config.WIND_SPEED`, up to 3×) to a `WindVoice.setIntensity` of 0.35→1.0,
   glided by a `LinearRamp` so dial moves don't click; intensity 1.0 == the approved render.
 
-**Next:** continue one at a time — **rain** is next per the build order — via the loop above.
+- **rain — v6, APPROVED & wired live.** A soft dark "sheet" bed (pink noise, high-pass 300
+  / low-pass 1600 = a low wash, not a mid hiss) plus DROPLETS = the patter. Droplets are a
+  "dust" of sparse random impulses (white noise thresholded at 0.9994, then gain+clamped to
+  a consistent unit impulse) exciting a high-resonance (0.94) state-variable band-pass whose
+  pitch wanders (RedNoise, ~800–2200 Hz), low-passed at 2.2 kHz so each is a tonal *plink*,
+  not a click. Locked params: `SoundLibrary.RAIN_*` / `DROP_*`; bed level 0.45, drop level
+  3.0, overall 2.0. Getting here took: bed too bright/wind-like → darken + add droplets;
+  drops → sparser & normalized-impulse for punch; "sounds like static" → high resonance +
+  low-pass the drops into tonal plinks + drop the bed to a low wash. Live: `AudioSystem`
+  maps `weather.stormLevel()` (0 clear → silent, 1 → full) to the rain voice's intensity.
+  Marked "good for now — revisit later if needed."
+
+**Next:** continue one at a time — **water** is next per the build order — via the loop above.
 
 ## Gotchas / constraints (don't relearn these the hard way)
 

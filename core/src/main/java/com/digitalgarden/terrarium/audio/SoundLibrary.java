@@ -2,13 +2,19 @@ package com.digitalgarden.terrarium.audio;
 
 import com.jsyn.Synthesizer;
 import com.jsyn.ports.UnitOutputPort;
+import com.jsyn.unitgen.Add;
+import com.jsyn.unitgen.FilterHighPass;
 import com.jsyn.unitgen.FilterLowPass;
+import com.jsyn.unitgen.FilterStateVariable;
 import com.jsyn.unitgen.LinearRamp;
+import com.jsyn.unitgen.Maximum;
+import com.jsyn.unitgen.Minimum;
 import com.jsyn.unitgen.Multiply;
 import com.jsyn.unitgen.MultiplyAdd;
 import com.jsyn.unitgen.PinkNoise;
 import com.jsyn.unitgen.RedNoise;
 import com.jsyn.unitgen.SineOscillator;
+import com.jsyn.unitgen.WhiteNoise;
 import com.digitalgarden.terrarium.Config;
 
 /**
@@ -33,9 +39,11 @@ public final class SoundLibrary {
     public static final String TEST_TONE = "test-tone";
     /** Ambient wind bed: low-passed pink noise with slow random gusts. */
     public static final String WIND = "wind";
+    /** Ambient rain bed: band-limited bright noise, steadier than wind. */
+    public static final String RAIN = "rain";
 
     /** Every sound name the harness/UI can ask for, in build order. */
-    public static final String[] ALL = { TEST_TONE, WIND };
+    public static final String[] ALL = { TEST_TONE, WIND, RAIN };
 
     /**
      * Builds the named voice into {@code synth} and returns its output port.
@@ -55,6 +63,8 @@ public final class SoundLibrary {
             }
             case WIND:
                 return buildWind(synth).output;
+            case RAIN:
+                return buildRain(synth).output;
             default:
                 throw new IllegalArgumentException("Unknown sound: " + name);
         }
@@ -74,19 +84,19 @@ public final class SoundLibrary {
     private static final double WIND_GUST_BASE   = 0.60; // mean gust gain
     private static final double WIND_GUST_SWING  = 0.40; // ± gust depth (0.20..1.00)
     private static final double WIND_LEVEL       = 2.0;  // overall output scale
-    private static final double WIND_INTENSITY_RAMP = 0.3; // s to glide to a new intensity
+    private static final double AMBIENT_INTENSITY_RAMP = 0.3; // s to glide to a new intensity
 
     /**
-     * A live wind voice: its {@link #output} port plus a game-controllable
+     * A live ambient voice: its {@link #output} port plus a game-controllable
      * {@link #setIntensity} (0..1-ish) that scales the whole bed, glided smoothly on the
-     * audio thread so turning the Wind dial doesn't click. At intensity 1.0 the output is
-     * identical to the approved isolated render.
+     * audio thread so a state change (Wind dial, storm level) doesn't click. At intensity
+     * 1.0 the output is identical to the approved isolated render.
      */
-    public static final class WindVoice {
+    public static final class AmbientVoice {
         public final UnitOutputPort output;
         private final LinearRamp intensity;
 
-        WindVoice(UnitOutputPort output, LinearRamp intensity) {
+        AmbientVoice(UnitOutputPort output, LinearRamp intensity) {
             this.output = output;
             this.intensity = intensity;
         }
@@ -97,8 +107,22 @@ public final class SoundLibrary {
         }
     }
 
+    /** Wraps a dry voice output in a click-free, game-controllable intensity stage. Defaults
+     *  to intensity 1.0 so the offline harness renders the exact approved timbre. */
+    private static AmbientVoice wrapIntensity(Synthesizer synth, UnitOutputPort dry) {
+        LinearRamp intensity = new LinearRamp();
+        Multiply out = new Multiply();
+        synth.add(intensity); synth.add(out);
+        intensity.time.set(AMBIENT_INTENSITY_RAMP);
+        intensity.current.set(1.0);
+        intensity.input.set(1.0);
+        dry.connect(out.inputA);
+        intensity.output.connect(out.inputB);
+        return new AmbientVoice(out.output, intensity);
+    }
+
     /** Builds the wind patch and returns a controllable handle. */
-    public static WindVoice buildWind(Synthesizer synth) {
+    public static AmbientVoice buildWind(Synthesizer synth) {
         PinkNoise pink = new PinkNoise();
         FilterLowPass lpf = new FilterLowPass();
         RedNoise cutoffLfo = new RedNoise();
@@ -133,20 +157,113 @@ public final class SoundLibrary {
         lpf.output.connect(gusted.inputA);
         gustMod.output.connect(gusted.inputB);
 
-        // Overall level.
+        // Overall level, then the game-controllable intensity stage.
         gusted.output.connect(level.inputA);
         level.inputB.set(WIND_LEVEL);
+        return wrapIntensity(synth, level.output);
+    }
 
-        // Game-controllable intensity, glided to avoid clicks. Defaults to 1.0 so the
-        // offline harness renders the exact approved timbre.
-        LinearRamp intensity = new LinearRamp();
-        Multiply out = new Multiply();
-        synth.add(intensity); synth.add(out);
-        intensity.time.set(WIND_INTENSITY_RAMP);
-        intensity.current.set(1.0);
-        intensity.input.set(1.0);
-        level.output.connect(out.inputA);
-        intensity.output.connect(out.inputB);
-        return new WindVoice(out.output, intensity);
+    // --- rain (v2) -----------------------------------------------------------
+    // Rain = a soft, dark "sheet" bed + a layer of DROPLETS (the patter), which is what
+    // makes it read as rain instead of wind/hiss.
+    //   Bed: pink noise band-limited low (dark, quiet) with gentle fluctuation.
+    //   Droplets: a "dust" of sparse, randomly-timed impulses — white noise thresholded
+    //     just below its peak, so only rare spikes get through — fed into a resonant
+    //     state-variable filter so each spike rings as a brief pitched tick. The tick
+    //     pitch wanders (slow RedNoise on the filter frequency) so no two drops match.
+    private static final double RAIN_HP_HZ      = 300;   // bed high-pass: cut low rumble
+    private static final double RAIN_LP_HZ      = 1600;  // bed low-pass: a low wash, not a mid hiss
+    private static final double RAIN_Q          = 0.7;   // gentle, non-resonant bed
+    private static final double RAIN_FLUX_RATE  = 0.5;   // bed fluctuation LFO (Hz)
+    private static final double RAIN_FLUX_BASE  = 0.85;  // bed mean level
+    private static final double RAIN_FLUX_SWING = 0.12;  // ± bed fluctuation
+    private static final double RAIN_BED_LEVEL  = 0.45;  // bed output scale (soft backdrop)
+
+    private static final double DROP_THRESHOLD  = 0.9994; // white-noise level a spike must exceed
+    private static final double DROP_SPIKE_GAIN = 3000;   // huge, so any over-threshold sample...
+    private static final double DROP_IMPULSE_CAP = 1.0;   // ...clamps to a consistent unit impulse
+    private static final double DROP_RESONANCE  = 0.94;   // high = a tonal, ringing "plink" (not a click)
+    private static final double DROP_FREQ_BASE  = 1500;   // plink pitch centre (Hz)
+    private static final double DROP_FREQ_SWING = 700;    // ± plink-pitch wander (800..2200 Hz)
+    private static final double DROP_FREQ_RATE  = 8;      // how fast the plink pitch varies (Hz)
+    private static final double DROP_LP_HZ      = 2200;   // strip the staticky high spray off each impact
+    private static final double DROP_LEVEL      = 3.0;    // droplet layer scale (drops sit on top)
+    private static final double RAIN_LEVEL      = 2.0;    // overall (bed + drops) scale
+
+    public static AmbientVoice buildRain(Synthesizer synth) {
+        // --- bed ---
+        PinkNoise pink = new PinkNoise();
+        FilterHighPass hp = new FilterHighPass();
+        FilterLowPass lp = new FilterLowPass();
+        RedNoise fluxLfo = new RedNoise();
+        MultiplyAdd fluxMod = new MultiplyAdd();
+        Multiply fluxed = new Multiply();
+        Multiply bed = new Multiply();
+        synth.add(pink); synth.add(hp); synth.add(lp);
+        synth.add(fluxLfo); synth.add(fluxMod); synth.add(fluxed); synth.add(bed);
+
+        pink.amplitude.set(1.0);
+        hp.frequency.set(RAIN_HP_HZ); hp.Q.set(RAIN_Q);
+        lp.frequency.set(RAIN_LP_HZ); lp.Q.set(RAIN_Q);
+        pink.output.connect(hp.input);
+        hp.output.connect(lp.input);
+        fluxLfo.frequency.set(RAIN_FLUX_RATE);
+        fluxLfo.amplitude.set(1.0);
+        fluxMod.inputB.set(RAIN_FLUX_SWING);
+        fluxMod.inputC.set(RAIN_FLUX_BASE);
+        fluxLfo.output.connect(fluxMod.inputA);
+        lp.output.connect(fluxed.inputA);
+        fluxMod.output.connect(fluxed.inputB);
+        fluxed.output.connect(bed.inputA);
+        bed.inputB.set(RAIN_BED_LEVEL);
+
+        // --- droplets ---
+        WhiteNoise trig = new WhiteNoise();
+        Add sub = new Add();           // trig - threshold
+        Maximum rect = new Maximum();   // max(0, ...) -> sparse tiny positive spikes
+        Multiply spike = new Multiply(); // blow them up...
+        Minimum clamp = new Minimum();   // ...then clamp to a consistent unit impulse
+        RedNoise pitchLfo = new RedNoise();
+        MultiplyAdd pitchMod = new MultiplyAdd();
+        FilterStateVariable ring = new FilterStateVariable();
+        FilterLowPass dropLp = new FilterLowPass();
+        Multiply drops = new Multiply();
+        synth.add(trig); synth.add(sub); synth.add(rect); synth.add(spike); synth.add(clamp);
+        synth.add(pitchLfo); synth.add(pitchMod); synth.add(ring); synth.add(dropLp); synth.add(drops);
+
+        trig.amplitude.set(1.0);
+        sub.inputB.set(-DROP_THRESHOLD);
+        trig.output.connect(sub.inputA);
+        rect.inputB.set(0.0);
+        sub.output.connect(rect.inputA);
+        spike.inputB.set(DROP_SPIKE_GAIN);
+        rect.output.connect(spike.inputA);
+        clamp.inputB.set(DROP_IMPULSE_CAP);
+        spike.output.connect(clamp.inputA);
+        // wandering tick pitch
+        pitchLfo.frequency.set(DROP_FREQ_RATE);
+        pitchLfo.amplitude.set(1.0);
+        pitchMod.inputB.set(DROP_FREQ_SWING);
+        pitchMod.inputC.set(DROP_FREQ_BASE);
+        pitchLfo.output.connect(pitchMod.inputA);
+        pitchMod.output.connect(ring.frequency);
+        ring.resonance.set(DROP_RESONANCE);
+        ring.amplitude.set(1.0);
+        clamp.output.connect(ring.input);
+        dropLp.frequency.set(DROP_LP_HZ);
+        dropLp.Q.set(0.7);
+        ring.bandPass.connect(dropLp.input);
+        dropLp.output.connect(drops.inputA);
+        drops.inputB.set(DROP_LEVEL);
+
+        // --- mix bed + droplets, then overall level ---
+        Add mix = new Add();
+        Multiply level = new Multiply();
+        synth.add(mix); synth.add(level);
+        bed.output.connect(mix.inputA);
+        drops.output.connect(mix.inputB);
+        mix.output.connect(level.inputA);
+        level.inputB.set(RAIN_LEVEL);
+        return wrapIntensity(synth, level.output);
     }
 }
